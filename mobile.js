@@ -1,30 +1,20 @@
-// Mobile Touch Controls and Haptic Feedback
-// Simple standalone script to add mobile support
-
+// Mobile Touch Controls - Simple version with mouse/touch support
 (function () {
-    // Wait for game to load
     window.addEventListener('load', () => {
-        const game = window.game; // Assumes game is global
+        const game = window.game;
         if (!game) {
-            console.warn('Game not found, mobile controls not initialized');
+            console.warn('Game not found');
             return;
         }
 
-        // Touch input state
-        let touchDir = { x: 0, y: 0 };
-
-        // Haptic feedback helper
         function vibrate(pattern) {
-            if (navigator.vibrate) {
-                navigator.vibrate(pattern);
-            }
+            if (navigator.vibrate) navigator.vibrate(pattern);
         }
 
-        // START button handler (for mobile and desktop)
+        // START button
         const startBtn = document.getElementById('start-btn');
         if (startBtn) {
             startBtn.addEventListener('click', () => {
-                // Check if in menu (state 0) and not in highscore entry
                 if (game.state === 0 && !game.highScorePending) {
                     game.initLevel();
                     game.startGame();
@@ -32,89 +22,94 @@
             });
         }
 
-        // D-pad buttons
+        // D-pad - works with both touch and mouse
         const dpadButtons = document.querySelectorAll('.dpad-btn');
-        dpadButtons.forEach(btn => {
-            const dir = btn.dataset.direction;
+        const keyMap = { 'up': 'ArrowUp', 'down': 'ArrowDown', 'left': 'ArrowLeft', 'right': 'ArrowRight' };
 
+        dpadButtons.forEach(btn => {
+            const keyCode = keyMap[btn.dataset.direction];
+
+            // Mouse events (for DevTools emulation)
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                if (game.keys) game.keys[keyCode] = true;
+                console.log('Direction:', keyCode, 'ON');
+                vibrate(10);
+            });
+
+            btn.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                if (game.keys) game.keys[keyCode] = false;
+                console.log('Direction:', keyCode, 'OFF');
+            });
+
+            btn.addEventListener('mouseleave', () => {
+                if (game.keys) game.keys[keyCode] = false;
+            });
+
+            // Touch events (for real mobile)
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                switch (dir) {
-                    case 'up': touchDir.y = -1; break;
-                    case 'down': touchDir.y = 1; break;
-                    case 'left': touchDir.x = -1; break;
-                    case 'right': touchDir.x = 1; break;
-                }
-                vibrate(10); // Short pulse
+                if (game.keys) game.keys[keyCode] = true;
+                vibrate(10);
             });
 
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                if (dir === 'up' || dir === 'down') touchDir.y = 0;
-                if (dir === 'left' || dir === 'right') touchDir.x = 0;
+                if (game.keys) game.keys[keyCode] = false;
             });
         });
 
         // TNT button
         const tntBtn = document.getElementById('mobile-tnt-btn');
         if (tntBtn) {
-            tntBtn.addEventListener('touchstart', (e) => {
+            const handleTnt = (e) => {
                 e.preventDefault();
-                // STATE.PLAYING is 2
                 if (game.state === 2 && game.placeDynamite) {
                     game.placeDynamite();
-                    vibrate(30); // Medium pulse
+                    vibrate(30);
                 }
-            });
+            };
+            tntBtn.addEventListener('click', handleTnt);
+            tntBtn.addEventListener('touchstart', handleTnt);
         }
 
         // Pause button
         const pauseBtn = document.getElementById('mobile-pause-btn');
         if (pauseBtn) {
-            pauseBtn.addEventListener('touchstart', (e) => {
+            const handlePause = (e) => {
                 e.preventDefault();
-                // STATE.PLAYING = 2, STATE.PAUSED = 3
                 if (game.state === 2) {
                     game.prevState = 2;
                     game.state = 3;
                     document.getElementById('pause-overlay').classList.remove('hidden');
                 } else if (game.state === 3) {
-                    game.state = game.prevState || 2;
+                    game.state = 2;
                     document.getElementById('pause-overlay').classList.add('hidden');
                 }
                 vibrate(15);
-            });
+            };
+            pauseBtn.addEventListener('click', handlePause);
+            pauseBtn.addEventListener('touchstart', handlePause);
         }
 
-        // Initialize gamepadInput if not exists
-        if (!game.gamepadInput) {
-            game.gamepadInput = { x: 0, y: 0 };
-        }
-
-        // Continuously update gamepadInput from touch
-        setInterval(() => {
-            game.gamepadInput.x = touchDir.x;
-            game.gamepadInput.y = touchDir.y;
-        }, 16); // ~60fps
-
-        // Add haptic feedback to key game events
-        const originalCollectDiamond = game.collectDiamond;
-        if (originalCollectDiamond) {
+        // Haptic feedback on game events
+        const origDiamond = game.collectDiamond;
+        if (origDiamond) {
             game.collectDiamond = function (x, y) {
-                vibrate(20); // Diamond collect
-                return originalCollectDiamond.call(this, x, y);
+                vibrate(20);
+                return origDiamond.call(this, x, y);
             };
         }
 
-        const originalGameOver = game.gameOver;
-        if (originalGameOver) {
+        const origGameOver = game.gameOver;
+        if (origGameOver) {
             game.gameOver = function () {
-                vibrate([100, 50, 100]); // Death vibration pattern
-                return originalGameOver.call(this);
+                vibrate([100, 50, 100]);
+                return origGameOver.call(this);
             };
         }
 
-        console.log('Mobile touch controls initialized!');
-        console.log('Touch input:', touchDir);
+        console.log('Mobile controls ready! (mouse + touch)');
     });
 })();

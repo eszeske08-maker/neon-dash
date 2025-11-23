@@ -1392,7 +1392,10 @@ class Game {
                 this.gamepadActionLocked = false;
             }
         } else {
-            this.gamepadInput = null;
+            // No gamepad connected - don't reset gamepadInput (allows touch controls)
+            if (!this.gamepadInput) {
+                this.gamepadInput = null;
+            }
         }
     }
 
