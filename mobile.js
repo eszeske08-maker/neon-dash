@@ -10,6 +10,17 @@
             return;
         }
 
+        // START button handler (for mobile and desktop)
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                if (game.state === STATE.MENU && !game.highScorePending) {
+                    game.initLevel();
+                    game.startGame();
+                }
+            });
+        }
+
         // Touch input state
         let touchDir = { x: 0, y: 0 };
 
