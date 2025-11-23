@@ -10,17 +10,6 @@
             return;
         }
 
-        // START button handler (for mobile and desktop)
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.addEventListener('click', () => {
-                if (game.state === STATE.MENU && !game.highScorePending) {
-                    game.initLevel();
-                    game.startGame();
-                }
-            });
-        }
-
         // Touch input state
         let touchDir = { x: 0, y: 0 };
 
@@ -29,6 +18,18 @@
             if (navigator.vibrate) {
                 navigator.vibrate(pattern);
             }
+        }
+
+        // START button handler (for mobile and desktop)
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                // Check if in menu (state 0) and not in highscore entry
+                if (game.state === 0 && !game.highScorePending) {
+                    game.initLevel();
+                    game.startGame();
+                }
+            });
         }
 
         // D-pad buttons
@@ -59,7 +60,8 @@
         if (tntBtn) {
             tntBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                if (game.state === STATE.PLAYING) {
+                // STATE.PLAYING is 2
+                if (game.state === 2 && game.placeDynamite) {
                     game.placeDynamite();
                     vibrate(30); // Medium pulse
                 }
@@ -71,29 +73,29 @@
         if (pauseBtn) {
             pauseBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                if (game.state === STATE.PLAYING) {
-                    game.prevState = STATE.PLAYING;
-                    game.state = STATE.PAUSED;
+                // STATE.PLAYING = 2, STATE.PAUSED = 3
+                if (game.state === 2) {
+                    game.prevState = 2;
+                    game.state = 3;
                     document.getElementById('pause-overlay').classList.remove('hidden');
-                } else if (game.state === STATE.PAUSED) {
-                    game.state = game.prevState || STATE.PLAYING;
+                } else if (game.state === 3) {
+                    game.state = game.prevState || 2;
                     document.getElementById('pause-overlay').classList.add('hidden');
                 }
                 vibrate(15);
             });
         }
 
-        // Inject touch input into game loop
-        const originalUpdate = game.update;
-        if (originalUpdate) {
-            game.update = function (deltaTime) {
-                // Apply touch input like keyboard/gamepad
-                if (touchDir.x !== 0 || touchDir.y !== 0) {
-                    this.gamepadInput = { x: touchDir.x, y: touchDir.y };
-                }
-                originalUpdate.call(this, deltaTime);
-            };
+        // Initialize gamepadInput if not exists
+        if (!game.gamepadInput) {
+            game.gamepadInput = { x: 0, y: 0 };
         }
+
+        // Continuously update gamepadInput from touch
+        setInterval(() => {
+            game.gamepadInput.x = touchDir.x;
+            game.gamepadInput.y = touchDir.y;
+        }, 16); // ~60fps
 
         // Add haptic feedback to key game events
         const originalCollectDiamond = game.collectDiamond;
@@ -113,5 +115,6 @@
         }
 
         console.log('Mobile touch controls initialized!');
+        console.log('Touch input:', touchDir);
     });
 })();
