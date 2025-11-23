@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Neon Dash</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="mobile.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div class="hud-panel">
+                <div class="hud-item">SCORE: <span id="score">00000</span></div>
+                <div class="hud-item">DIAMONDS: <span id="diamonds">0/10</span></div>
+                <div class="hud-item" style="color: #ff4444;">TNT: <span id="dynamite">0</span></div>
+                <div class="hud-item">TIME: <span id="time">000</span></div>
+                <div class="hud-item">LEVEL: <span id="level">1</span></div>
+            </div>
+
+            <div id="fps-counter" class="hidden">FPS: <span id="fps">60</span></div>
+
+            <div id="menu-screen">
+                <h1 class="game-title">NEON DASH</h1>
+                <div id="high-score-container">
+                    <h2 id="high-score-title">HIGH SCORES</h2>
+                    <ul id="high-score-list">
+                        <!-- Scores injected by JS -->
+                    </ul>
+                </div>
+                <p class="blink">PRESS SPACE TO START</p>
+                <p class="menu-hint">L - LEVEL EDITOR</p>
+            </div>
+
+            <div id="name-entry-overlay" class="hidden">
+                <h2>NEW HIGH SCORE!</h2>
+                <p>ENTER YOUR NAME</p>
+                <input type="text" id="player-name-input" maxlength="3" placeholder="AAA">
+                <button id="submit-score-btn">SUBMIT</button>
+            </div>
+
+            <div id="message-overlay" class="hidden">
+                <h1 id="message-title">READY?</h1>
+                <p id="message-subtitle">Press ANY KEY to Start</p>
+            </div>
+
+            <div id="pause-overlay" class="hidden">
+                <h1>PAUSED</h1>
+                <p>Press ESC to Resume</p>
+                <p class="pause-hint">R - Restart Level | M - Toggle Sound | F - Fullscreen</p>
+            </div>
+
+            <div id="restart-confirm-overlay" class="hidden">
+                <h2>RESTART LEVEL?</h2>
+                <p>Press R again to confirm</p>
+            </div>
+
+            <div id="editor-overlay" class="hidden">
+                <div id="editor-toolbar">
+                    <div id="editor-palette">
+                        <!-- Palette items injected by JS -->
+                    </div>
+                </div>
+                <div id="editor-info">
+                    <span>L: Exit Editor</span>
+                    <span>G: Toggle Grid</span>
+                    <span>E: Cycle Enemy (<span id="enemy-type-indicator">BASIC</span>)</span>
+                    <span>T: Test Play</span>
+                    <span>S: Save</span>
+                    <span>O: Load</span>
+                    <span>Right Click: Erase</span>
+                </div>
+            </div>
+
+            <!-- Mobile Touch Controls -->
+            <div id="mobile-controls" class="mobile-only">
+                <div id="dpad">
+                    <button class="dpad-btn dpad-up" data-direction="up">▲</button>
+                    <button class="dpad-btn dpad-down" data-direction="down">▼</button>
+                    <button class="dpad-btn dpad-left" data-direction="left">◀</button>
+                    <button class="dpad-btn dpad-right" data-direction="right">▶</button>
+                    <div class="dpad-center"></div>
+                </div>
+                <div id="action-buttons">
+                    <button id="mobile-tnt-btn" class="action-btn">💣<br>TNT</button>
+                    <button id="mobile-pause-btn" class="action-btn">⏸<br>PAUSE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="levelEditor.js?v=8"></script>
+    <script src="game.js?v=8"></script>
+    <script src="mobile.js"></script>
+</body>
+
+</html>
