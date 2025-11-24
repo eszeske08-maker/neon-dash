@@ -127,8 +127,57 @@
     background: rgba(255, 68, 68, 0.5);
     box-shadow: 0 0 20px rgba(255, 68, 68, 0.8);
 }
-/* START BUTTON STYLING */
-.menu-button {background: linear-gradient(135deg, #ff00ff, #00ffff);color: #fff;border: none;padding: 20px 60px;font-family: 'Orbitron', sans-serif;font-size: 28px;font-weight: bold;cursor: pointer;border-radius: 10px;margin: 30px 0;box-shadow: 0 0 30px rgba(255, 0, 255, 0.6);transition: all 0.3s;text-transform: uppercase;}
-.menu-button:hover {transform: scale(1.1);box-shadow: 0 0 50px rgba(255, 0, 255, 1);}
-.menu-button:active {transform: scale(0.95);}
-.menu-hint {color: #00ffff;font-size: 14px;margin-top: 10px;opacity: 0.8;}
+
+/* START & RESTART BUTTON STYLING */
+.menu-button {
+    background: linear-gradient(135deg, #ff00ff, #00ffff);
+    color: #fff;
+    border: none;
+    padding: 20px 60px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 10px;
+    margin: 30px 0;
+    box-shadow: 0 0 30px rgba(255, 0, 255, 0.6);
+    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+.menu-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 50px rgba(255, 0, 255, 1);
+}
+
+.menu-button:active {
+    transform: scale(0.95);
+}
+
+.menu-hint {
+    color: #00ffff;
+    font-size: 14px;
+    margin-top: 10px;
+    opacity: 0.8;
+}
+
+/* MOBILE-SPECIFIC: Ensure RESTART button is visible */
+@media (max-width: 768px),
+(hover: none) {
+    #message-restart-btn {
+        display: block !important;
+        font-size: 22px !important;
+        padding: 15px 50px !important;
+        margin: 20px auto !important;
+        width: auto !important;
+        min-width: 200px;
+        pointer-events: all !important;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(255, 0, 255, 0.3);
+        z-index: 9999;
+    }
+
+    #message-restart-btn.hidden {
+        display: none !important;
+    }
+}
