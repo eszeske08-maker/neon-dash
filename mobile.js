@@ -1,4 +1,4 @@
-// Mobile Controls with Debug
+// Mobile Controls - FINAL with dynamic RESTART creation
 (function () {
     window.addEventListener('load', () => {
         const game = window.game;
@@ -63,15 +63,26 @@
         const oG = game.gameOver;
         if (oG) game.gameOver = function () { vib([100, 50, 100]); return oG.call(this); };
 
-        // RESTART - detailed debug
-        const rb = document.getElementById('message-restart-btn');
-        log('getElementById:', rb ? 'YES' : 'NO');
+        // RESTART - create if missing!
+        let rb = document.getElementById('message-restart-btn');
+        log('RESTART in HTML:', rb ? 'YES' : 'NO');
         log('Total buttons:', document.querySelectorAll('button').length);
 
+        if (!rb) {
+            log('Creating RESTART...');
+            const msgOverlay = document.getElementById('message-overlay');
+            if (msgOverlay) {
+                rb = document.createElement('button');
+                rb.id = 'message-restart-btn';
+                rb.className = 'menu-button hidden';
+                rb.textContent = 'RESTART';
+                msgOverlay.appendChild(rb);
+                log('Created!');
+            }
+        }
+
         if (rb) {
-            log('RESTART OK');
-            log('display:', rb.style.display);
-            log('class:', rb.className);
+            log('RESTART OK!');
 
             const restart = () => {
                 log('Tapped! State:' + game.state);
@@ -87,22 +98,21 @@
             rb.addEventListener('touchstart', e => { e.preventDefault(); restart(); }, { passive: false });
 
             // Poll
-            let lastS = game.state;
+            let last = game.state;
             setInterval(() => {
                 const s = game.state;
-                if ((s === 2 || s === 3) && lastS !== s) {
-                    log('GameOver! Showing btn');
+                if ((s === 2 || s === 3) && last !== s) {
+                    log('GameOver! Show');
                     rb.classList.remove('hidden');
                     rb.style.display = 'block';
                     rb.style.visibility = 'visible';
-                } else if (s !== 2 && s !== 3 && (lastS === 2 || lastS === 3)) {
-                    log('Hiding btn');
+                } else if (s !== 2 && s !== 3 && (last === 2 || last === 3)) {
                     rb.classList.add('hidden');
                 }
-                lastS = s;
+                last = s;
             }, 100);
         } else {
-            log('RESTART NOT FOUND!');
+            log('FAILED!');
         }
 
         log('Ready!');
