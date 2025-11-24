@@ -1,4 +1,4 @@
-// Mobile Controls + ON-SCREEN DEBUG
+// Mobile Controls with Debug
 (function () {
     window.addEventListener('load', () => {
         const game = window.game;
@@ -6,27 +6,18 @@
 
         function vib(p) { if (navigator.vibrate) navigator.vibrate(p); }
 
-        // MOBILE DEBUG PANEL
-        const debugDiv = document.createElement('div');
-        debugDiv.id = 'mobile-debug';
-        debugDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.9);color:#0f0;font:10px monospace;z-index:99999;padding:5px;display:none;';
-        document.body.appendChild(debugDiv);
-        const log = (...args) => {
-            console.log(...args);
-            debugDiv.style.display = 'block';
-            debugDiv.innerHTML += args.join(' ') + '<br>';
-            debugDiv.scrollTop = debugDiv.scrollHeight;
-        };
-        log('Debug Active');
+        // Debug Panel
+        const d = document.createElement('div');
+        d.style.cssText = 'position:fixed;top:0;left:0;width:100%;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.9);color:#0f0;font:10px monospace;z-index:99999;padding:5px;';
+        document.body.appendChild(d);
+        const log = (...a) => { console.log(...a); d.innerHTML += a.join(' ') + '<br>'; d.scrollTop = d.scrollHeight; };
+        log('Debug ON');
 
         // START
         const startBtn = document.getElementById('start-btn');
         if (startBtn) {
             startBtn.addEventListener('click', () => {
-                if (game.state === 0 && !game.highScorePending) {
-                    game.initLevel();
-                    game.startGame();
-                }
+                if (game.state === 0 && !game.highScorePending) { game.initLevel(); game.startGame(); }
             });
         }
 
@@ -52,13 +43,12 @@
         // Pause
         const pause = document.getElementById('mobile-pause-btn');
         if (pause) {
-            let pauseLocked = false;
+            let lock = false;
             const h = e => {
                 e.preventDefault(); e.stopPropagation();
-                if (pauseLocked) return;
-                pauseLocked = true;
-                setTimeout(() => pauseLocked = false, 300);
-
+                if (lock) return;
+                lock = true;
+                setTimeout(() => lock = false, 300);
                 if (game.state === 1) { game.state = 6; document.getElementById('pause-overlay').classList.remove('hidden'); }
                 else if (game.state === 6) { game.state = 1; document.getElementById('pause-overlay').classList.add('hidden'); }
                 vib(15);
@@ -73,42 +63,48 @@
         const oG = game.gameOver;
         if (oG) game.gameOver = function () { vib([100, 50, 100]); return oG.call(this); };
 
-        // RESTART button with polling
-        const restartBtn = document.getElementById('message-restart-btn');
-        if (restartBtn) {
-            log('✓ RESTART found');
+        // RESTART - detailed debug
+        const rb = document.getElementById('message-restart-btn');
+        log('getElementById:', rb ? 'YES' : 'NO');
+        log('Total buttons:', document.querySelectorAll('button').length);
 
-            const handleRestart = () => {
-                log('RESTART tapped! State:' + game.state);
+        if (rb) {
+            log('RESTART OK');
+            log('display:', rb.style.display);
+            log('class:', rb.className);
+
+            const restart = () => {
+                log('Tapped! State:' + game.state);
                 if (game.state === 2 || game.state === 3) {
-                    if (game.highScorePending) return;
-                    if (game.state === 3 && game.currentLevelIndex >= 10) game.currentLevelIndex = 0;
-                    game.resetGame();
-                    restartBtn.classList.add('hidden');
+                    if (!game.highScorePending) {
+                        if (game.state === 3 && game.currentLevelIndex >= 10) game.currentLevelIndex = 0;
+                        game.resetGame();
+                        rb.classList.add('hidden');
+                    }
                 }
             };
-            restartBtn.addEventListener('click', handleRestart);
-            restartBtn.addEventListener('touchstart', e => { e.preventDefault(); handleRestart(); }, { passive: false });
+            rb.addEventListener('click', restart);
+            rb.addEventListener('touchstart', e => { e.preventDefault(); restart(); }, { passive: false });
 
-            // Poll state every 100ms
-            let lastState = game.state;
+            // Poll
+            let lastS = game.state;
             setInterval(() => {
-                const state = game.state;
-                if ((state === 2 || state === 3) && lastState !== state) {
-                    log('→ GameOver/Win! State:' + state);
-                    restartBtn.classList.remove('hidden');
-                    restartBtn.style.display = 'block';
-                    restartBtn.style.visibility = 'visible';
-                } else if (state !== 2 && state !== 3 && (lastState === 2 || lastState === 3)) {
-                    log('← Hiding RESTART');
-                    restartBtn.classList.add('hidden');
+                const s = game.state;
+                if ((s === 2 || s === 3) && lastS !== s) {
+                    log('GameOver! Showing btn');
+                    rb.classList.remove('hidden');
+                    rb.style.display = 'block';
+                    rb.style.visibility = 'visible';
+                } else if (s !== 2 && s !== 3 && (lastS === 2 || lastS === 3)) {
+                    log('Hiding btn');
+                    rb.classList.add('hidden');
                 }
-                lastState = state;
+                lastS = s;
             }, 100);
         } else {
-            log('✗ RESTART NOT in DOM!');
+            log('RESTART NOT FOUND!');
         }
 
-        log('Mobile ready!');
+        log('Ready!');
     });
 })();
