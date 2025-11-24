@@ -1,4 +1,4 @@
-// Mobile Controls - Touch optimized with RESTART button
+// Mobile Controls - Touch optimized with state polling for RESTART
 (function () {
     window.addEventListener('load', () => {
         const game = window.game;
@@ -69,11 +69,13 @@
         const oG = game.gameOver;
         if (oG) game.gameOver = function () { vib([100, 50, 100]); return oG.call(this); };
 
-        // RESTART button (mobile Game Over/Win)
+        // RESTART button with state polling
         const restartBtn = document.getElementById('message-restart-btn');
         if (restartBtn) {
+            console.log('✓ RESTART button found');
+
             const handleRestart = () => {
-                // STATE.GAMEOVER=2, STATE.WIN=3
+                console.log('RESTART tapped! State:', game.state);
                 if (game.state === 2 || game.state === 3) {
                     if (game.highScorePending) return;
                     if (game.state === 3 && game.currentLevelIndex >= 10) game.currentLevelIndex = 0;
@@ -83,19 +85,26 @@
             };
             restartBtn.addEventListener('click', handleRestart);
             restartBtn.addEventListener('touchstart', e => { e.preventDefault(); handleRestart(); }, { passive: false });
-        }
 
-        // Show RESTART button on Game Over/Win
-        const origShowMessage = game.showMessage;
-        if (origShowMessage) {
-            game.showMessage = function (title, subtitle) {
-                origShowMessage.call(this, title, subtitle);
-                if ((title === 'GAME OVER' || title === 'LEVEL COMPLETE!' || title === 'YOU WIN!') && restartBtn) {
-                    setTimeout(() => restartBtn.classList.remove('hidden'), 100);
+            // Poll game state every 100ms
+            let lastState = game.state;
+            setInterval(() => {
+                const state = game.state;
+                if ((state === 2 || state === 3) && lastState !== state) {
+                    console.log('→ Game Over/Win! Showing RESTART. State:', state);
+                    restartBtn.classList.remove('hidden');
+                    restartBtn.style.display = 'block';
+                    restartBtn.style.visibility = 'visible';
+                } else if (state !== 2 && state !== 3 && (lastState === 2 || lastState === 3)) {
+                    console.log('← Hiding RESTART');
+                    restartBtn.classList.add('hidden');
                 }
-            };
+                lastState = state;
+            }, 100);
+        } else {
+            console.error('✗ RESTART button NOT in DOM!');
         }
 
-        console.log('Mobile ready! Restart button added.');
+        console.log('Mobile ready! Polling active.');
     });
 })();
