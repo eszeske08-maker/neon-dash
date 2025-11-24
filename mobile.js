@@ -1,15 +1,10 @@
-// Mobile Touch Controls - Simple version with mouse/touch support
+// Mobile Controls - FINAL VERSION with debounced Pause
 (function () {
     window.addEventListener('load', () => {
         const game = window.game;
-        if (!game) {
-            console.warn('Game not found');
-            return;
-        }
+        if (!game) return;
 
-        function vibrate(pattern) {
-            if (navigator.vibrate) navigator.vibrate(pattern);
-        }
+        function vib(p) { if (navigator.vibrate) navigator.vibrate(p); }
 
         // START button
         const startBtn = document.getElementById('start-btn');
@@ -22,94 +17,56 @@
             });
         }
 
-        // D-pad - works with both touch and mouse
-        const dpadButtons = document.querySelectorAll('.dpad-btn');
+        // D-pad
         const keyMap = { 'up': 'ArrowUp', 'down': 'ArrowDown', 'left': 'ArrowLeft', 'right': 'ArrowRight' };
-
-        dpadButtons.forEach(btn => {
-            const keyCode = keyMap[btn.dataset.direction];
-
-            // Mouse events (for DevTools emulation)
-            btn.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                if (game.keys) game.keys[keyCode] = true;
-                console.log('Direction:', keyCode, 'ON');
-                vibrate(10);
-            });
-
-            btn.addEventListener('mouseup', (e) => {
-                e.preventDefault();
-                if (game.keys) game.keys[keyCode] = false;
-                console.log('Direction:', keyCode, 'OFF');
-            });
-
-            btn.addEventListener('mouseleave', () => {
-                if (game.keys) game.keys[keyCode] = false;
-            });
-
-            // Touch events (for real mobile)
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (game.keys) game.keys[keyCode] = true;
-                vibrate(10);
-            });
-
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                if (game.keys) game.keys[keyCode] = false;
-            });
+        document.querySelectorAll('.dpad-btn').forEach(btn => {
+            const key = keyMap[btn.dataset.direction];
+            btn.addEventListener('mousedown', e => { e.preventDefault(); if (game.keys) game.keys[key] = true; vib(10); });
+            btn.addEventListener('mouseup', e => { e.preventDefault(); if (game.keys) game.keys[key] = false; });
+            btn.addEventListener('mouseleave', () => { if (game.keys) game.keys[key] = false; });
+            btn.addEventListener('touchstart', e => { e.preventDefault(); if (game.keys) game.keys[key] = true; vib(10); });
+            btn.addEventListener('touchend', e => { e.preventDefault(); if (game.keys) game.keys[key] = false; });
         });
 
-        // TNT button
-        const tntBtn = document.getElementById('mobile-tnt-btn');
-        if (tntBtn) {
-            const handleTnt = (e) => {
-                e.preventDefault();
-                if (game.state === 2 && game.placeDynamite) {
-                    game.placeDynamite();
-                    vibrate(30);
-                }
-            };
-            tntBtn.addEventListener('click', handleTnt);
-            tntBtn.addEventListener('touchstart', handleTnt);
+        // TNT - STATE.PLAYING = 1
+        const tnt = document.getElementById('mobile-tnt-btn');
+        if (tnt) {
+            const h = e => { e.preventDefault(); if (game.state === 1 && game.placeDynamite) { game.placeDynamite(); vib(30); } };
+            tnt.addEventListener('click', h);
+            tnt.addEventListener('touchstart', h);
         }
 
-        // Pause button
-        const pauseBtn = document.getElementById('mobile-pause-btn');
-        if (pauseBtn) {
-            const handlePause = (e) => {
+        // Pause - PLAYING=1, PAUSED=6 (with 300ms debounce to prevent double-trigger)
+        const pause = document.getElementById('mobile-pause-btn');
+        if (pause) {
+            let pauseLocked = false;
+            const h = e => {
                 e.preventDefault();
-                if (game.state === 2) {
-                    game.prevState = 2;
-                    game.state = 3;
+                e.stopPropagation();
+                if (pauseLocked) return; // Ignore rapid clicks
+                pauseLocked = true;
+                setTimeout(() => pauseLocked = false, 300); // Unlock after 300ms
+
+                if (game.state === 1) {
+                    game.state = 6;
                     document.getElementById('pause-overlay').classList.remove('hidden');
-                } else if (game.state === 3) {
-                    game.state = 2;
+                }
+                else if (game.state === 6) {
+                    game.state = 1;
                     document.getElementById('pause-overlay').classList.add('hidden');
                 }
-                vibrate(15);
+                vib(15);
             };
-            pauseBtn.addEventListener('click', handlePause);
-            pauseBtn.addEventListener('touchstart', handlePause);
+            pause.addEventListener('click', h);
+            pause.addEventListener('touchstart', h);
         }
 
-        // Haptic feedback on game events
-        const origDiamond = game.collectDiamond;
-        if (origDiamond) {
-            game.collectDiamond = function (x, y) {
-                vibrate(20);
-                return origDiamond.call(this, x, y);
-            };
-        }
+        // Haptic feedback
+        const oD = game.collectDiamond;
+        if (oD) game.collectDiamond = function (x, y) { vib(20); return oD.call(this, x, y); };
+        const oG = game.gameOver;
+        if (oG) game.gameOver = function () { vib([100, 50, 100]); return oG.call(this); };
 
-        const origGameOver = game.gameOver;
-        if (origGameOver) {
-            game.gameOver = function () {
-                vibrate([100, 50, 100]);
-                return origGameOver.call(this);
-            };
-        }
-
-        console.log('Mobile controls ready! (mouse + touch)');
+        console.log('Mobile OK! PLAYING=1, PAUSED=6, Pause debounced');
     });
 })();
