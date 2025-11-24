@@ -1,4 +1,4 @@
-// Mobile Controls - Touch optimized version
+// Mobile Controls - Touch optimized with RESTART button
 (function () {
     window.addEventListener('load', () => {
         const game = window.game;
@@ -28,31 +28,23 @@
             btn.addEventListener('touchend', e => { e.preventDefault(); if (game.keys) game.keys[key] = false; });
         });
 
-        // TNT - touchstart only (no click for mobile)
+        // TNT
         const tnt = document.getElementById('mobile-tnt-btn');
         if (tnt) {
-            const handleTnt = e => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('TNT! State:', game.state);
-                if (game.state === 1 && game.placeDynamite) {
-                    game.placeDynamite();
-                    vib(30);
-                    console.log('TNT placed');
-                }
+            const h = e => {
+                e.preventDefault(); e.stopPropagation();
+                if (game.state === 1 && game.placeDynamite) { game.placeDynamite(); vib(30); }
             };
-            tnt.addEventListener('touchstart', handleTnt, { passive: false });
-            tnt.addEventListener('mousedown', handleTnt); // DevTools
+            tnt.addEventListener('touchstart', h, { passive: false });
+            tnt.addEventListener('mousedown', h);
         }
 
-        // Pause - touchstart only with debounce
+        // Pause
         const pause = document.getElementById('mobile-pause-btn');
         if (pause) {
             let pauseLocked = false;
-            const handlePause = e => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Pause! State:', game.state, 'Locked:', pauseLocked);
+            const h = e => {
+                e.preventDefault(); e.stopPropagation();
                 if (pauseLocked) return;
                 pauseLocked = true;
                 setTimeout(() => pauseLocked = false, 300);
@@ -60,17 +52,15 @@
                 if (game.state === 1) {
                     game.state = 6;
                     document.getElementById('pause-overlay').classList.remove('hidden');
-                    console.log('Paused');
                 }
                 else if (game.state === 6) {
                     game.state = 1;
                     document.getElementById('pause-overlay').classList.add('hidden');
-                    console.log('Resumed');
                 }
                 vib(15);
             };
-            pause.addEventListener('touchstart', handlePause, { passive: false });
-            pause.addEventListener('mousedown', handlePause); // DevTools
+            pause.addEventListener('touchstart', h, { passive: false });
+            pause.addEventListener('mousedown', h);
         }
 
         // Haptic
@@ -79,6 +69,33 @@
         const oG = game.gameOver;
         if (oG) game.gameOver = function () { vib([100, 50, 100]); return oG.call(this); };
 
-        console.log('Mobile ready! Touch events: passive=false');
+        // RESTART button (mobile Game Over/Win)
+        const restartBtn = document.getElementById('message-restart-btn');
+        if (restartBtn) {
+            const handleRestart = () => {
+                // STATE.GAMEOVER=2, STATE.WIN=3
+                if (game.state === 2 || game.state === 3) {
+                    if (game.highScorePending) return;
+                    if (game.state === 3 && game.currentLevelIndex >= 10) game.currentLevelIndex = 0;
+                    game.resetGame();
+                    restartBtn.classList.add('hidden');
+                }
+            };
+            restartBtn.addEventListener('click', handleRestart);
+            restartBtn.addEventListener('touchstart', e => { e.preventDefault(); handleRestart(); }, { passive: false });
+        }
+
+        // Show RESTART button on Game Over/Win
+        const origShowMessage = game.showMessage;
+        if (origShowMessage) {
+            game.showMessage = function (title, subtitle) {
+                origShowMessage.call(this, title, subtitle);
+                if ((title === 'GAME OVER' || title === 'LEVEL COMPLETE!' || title === 'YOU WIN!') && restartBtn) {
+                    setTimeout(() => restartBtn.classList.remove('hidden'), 100);
+                }
+            };
+        }
+
+        console.log('Mobile ready! Restart button added.');
     });
 })();
