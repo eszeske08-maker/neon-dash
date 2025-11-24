@@ -1,4 +1,4 @@
-// Mobile Controls - FINAL VERSION with debounced Pause
+// Mobile Controls - Touch optimized version
 (function () {
     window.addEventListener('load', () => {
         const game = window.game;
@@ -28,45 +28,57 @@
             btn.addEventListener('touchend', e => { e.preventDefault(); if (game.keys) game.keys[key] = false; });
         });
 
-        // TNT - STATE.PLAYING = 1
+        // TNT - touchstart only (no click for mobile)
         const tnt = document.getElementById('mobile-tnt-btn');
         if (tnt) {
-            const h = e => { e.preventDefault(); if (game.state === 1 && game.placeDynamite) { game.placeDynamite(); vib(30); } };
-            tnt.addEventListener('click', h);
-            tnt.addEventListener('touchstart', h);
+            const handleTnt = e => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('TNT! State:', game.state);
+                if (game.state === 1 && game.placeDynamite) {
+                    game.placeDynamite();
+                    vib(30);
+                    console.log('TNT placed');
+                }
+            };
+            tnt.addEventListener('touchstart', handleTnt, { passive: false });
+            tnt.addEventListener('mousedown', handleTnt); // DevTools
         }
 
-        // Pause - PLAYING=1, PAUSED=6 (with 300ms debounce to prevent double-trigger)
+        // Pause - touchstart only with debounce
         const pause = document.getElementById('mobile-pause-btn');
         if (pause) {
             let pauseLocked = false;
-            const h = e => {
+            const handlePause = e => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (pauseLocked) return; // Ignore rapid clicks
+                console.log('Pause! State:', game.state, 'Locked:', pauseLocked);
+                if (pauseLocked) return;
                 pauseLocked = true;
-                setTimeout(() => pauseLocked = false, 300); // Unlock after 300ms
+                setTimeout(() => pauseLocked = false, 300);
 
                 if (game.state === 1) {
                     game.state = 6;
                     document.getElementById('pause-overlay').classList.remove('hidden');
+                    console.log('Paused');
                 }
                 else if (game.state === 6) {
                     game.state = 1;
                     document.getElementById('pause-overlay').classList.add('hidden');
+                    console.log('Resumed');
                 }
                 vib(15);
             };
-            pause.addEventListener('click', h);
-            pause.addEventListener('touchstart', h);
+            pause.addEventListener('touchstart', handlePause, { passive: false });
+            pause.addEventListener('mousedown', handlePause); // DevTools
         }
 
-        // Haptic feedback
+        // Haptic
         const oD = game.collectDiamond;
         if (oD) game.collectDiamond = function (x, y) { vib(20); return oD.call(this, x, y); };
         const oG = game.gameOver;
         if (oG) game.gameOver = function () { vib([100, 50, 100]); return oG.call(this); };
 
-        console.log('Mobile OK! PLAYING=1, PAUSED=6, Pause debounced');
+        console.log('Mobile ready! Touch events: passive=false');
     });
 })();
