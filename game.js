@@ -613,6 +613,7 @@ class Game {
         this.currentLevelIndex = 0;
 
         this.fallingEntities = new Set();
+        this.fallingEntityFrames = new Map(); // Track falling duration
         this.particles = [];
         this.enemies = [];
 
@@ -689,6 +690,7 @@ class Game {
         this.particles = [];
         this.enemies = [];
         this.fallingEntities.clear();
+        this.fallingEntityFrames.clear(); // Clear falling duration tracking
         this.shakeTimer = 0;
 
         // Select Theme
@@ -1593,9 +1595,16 @@ class Game {
                         this.grid[y + 1][x] = type;
                         processed.add(`${x},${y + 1}`);
                         this.fallingEntities.add(`${x},${y + 1}`); // Mark as falling
-                    } else if (this.fallingEntities.has(`${x},${y}`) && this.grid[y + 1][x] === TYPES.PLAYER) {
-                        // Crush player if falling
-                        this.die();
+
+                        // Track falling duration
+                        const prevFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
+                        this.fallingEntityFrames.set(`${x},${y + 1}`, prevFrames + 1);
+                    } else if (this.fallingEntities.has(`${x},${y}`) && this.player.x === x && this.player.y === y + 1) {
+                        // Crush player ONLY if falling for 3+ frames (grace period)
+                        const fallingFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
+                        if (fallingFrames >= 3) {
+                            this.die();
+                        }
                     } else if (this.fallingEntities.has(`${x},${y}`) && this.grid[y + 1][x] === TYPES.ENEMY) {
                         // Crush enemy
                         const enemyIndex = this.enemies.findIndex(e => e.x === x && e.y === y + 1);
@@ -1662,25 +1671,30 @@ class Game {
                             this.grid[y][x - 1] = type;
                             processed.add(`${x - 1},${y}`);
                             this.fallingEntities.add(`${x - 1},${y}`);
+                            const prevFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
+                            this.fallingEntityFrames.set(`${x - 1},${y}`, prevFrames + 1);
                         } else if (this.grid[y][x + 1] === TYPES.EMPTY && this.grid[y + 1][x + 1] === TYPES.EMPTY) {
                             // Roll Right
                             this.grid[y][x] = TYPES.EMPTY;
                             this.grid[y][x + 1] = type;
                             processed.add(`${x + 1},${y}`);
                             this.fallingEntities.add(`${x + 1},${y}`);
+                            const prevFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
+                            this.fallingEntityFrames.set(`${x + 1},${y}`, prevFrames + 1);
                         } else {
                             // Stopped falling
                             this.fallingEntities.delete(`${x},${y}`);
+                            this.fallingEntityFrames.delete(`${x},${y}`);
                         }
                     } else {
                         // Landed on dirt or something stable
                         this.fallingEntities.delete(`${x},${y}`);
+                        this.fallingEntityFrames.delete(`${x},${y}`);
                     }
                 }
             }
         }
     }
-
 
 
     spawnParticles(x, y, color, count) {
