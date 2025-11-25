@@ -1040,9 +1040,12 @@ class Game {
     drawEnemy(x, y) {
         const enemy = this.enemies.find(e => e.x * TILE_SIZE === x && e.y * TILE_SIZE === y);
         let color = this.currentTheme[TYPES.ENEMY]; // Default Basic
-        let eyeColor = '#ffff00';
+        // BASIC: Black eyes for Theme 1 (yellow body), yellow otherwise
+        let eyeColor = (this.currentLevelIndex % THEMES.length) === 1 ? '#000000' : '#ffff00';
+        let type = ENEMY_TYPES.BASIC;
 
         if (enemy) {
+            type = enemy.type;
             if (enemy.type === ENEMY_TYPES.SEEKER) {
                 color = this.currentTheme.enemySeeker;
                 eyeColor = '#ff0000'; // Red eyes
@@ -1055,14 +1058,40 @@ class Game {
         this.ctx.fillStyle = color;
         this.ctx.shadowBlur = 10;
         this.ctx.shadowColor = color;
-        this.ctx.fillRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
 
-        // Eyes (animated)
+        // Draw different shapes based on type
+        if (type === ENEMY_TYPES.BASIC) {
+            // BASIC: Circle/Oval (butterfly/bug style)
+            this.ctx.beginPath();
+            this.ctx.ellipse(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE / 2 - 6, TILE_SIZE / 2 - 4, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (type === ENEMY_TYPES.SEEKER) {
+            // SEEKER: Triangle (aggressive, hunter)
+            this.ctx.beginPath();
+            this.ctx.moveTo(x + TILE_SIZE / 2, y + 6); // Top point
+            this.ctx.lineTo(x + TILE_SIZE - 6, y + TILE_SIZE - 6); // Bottom right
+            this.ctx.lineTo(x + 6, y + TILE_SIZE - 6); // Bottom left
+            this.ctx.closePath();
+            this.ctx.fill();
+        } else {
+            // PATROLLER: Square (original, patrol guard)
+            this.ctx.fillRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+        }
+
+        // Eyes (animated) - position adjusted per type
         const eyeOffset = Math.sin(this.globalTime * 0.01) * 2;
         this.ctx.fillStyle = eyeColor;
         this.ctx.shadowBlur = 0;
-        this.ctx.fillRect(x + 8 + eyeOffset, y + 10, 4, 4);
-        this.ctx.fillRect(x + 20 + eyeOffset, y + 10, 4, 4);
+
+        if (type === ENEMY_TYPES.SEEKER) {
+            // Triangle eyes - higher up
+            this.ctx.fillRect(x + 10 + eyeOffset, y + 12, 3, 3);
+            this.ctx.fillRect(x + 19 + eyeOffset, y + 12, 3, 3);
+        } else {
+            // Circle and Square eyes - centered
+            this.ctx.fillRect(x + 8 + eyeOffset, y + 10, 4, 4);
+            this.ctx.fillRect(x + 20 + eyeOffset, y + 10, 4, 4);
+        }
     }
 
     drawPlayer(x, y) {
