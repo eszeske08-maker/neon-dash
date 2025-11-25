@@ -1441,8 +1441,14 @@ class Game {
             } else if (this.grid[nextY][nextX] === TYPES.DYNAMITE_PICKUP) {
                 this.collectDynamite(nextX, nextY);
             } else if (this.grid[nextY][nextX] === TYPES.EXIT) {
-                this.winGame();
-                return;
+                // Only allow exit if enough diamonds collected
+                if (this.diamondsCollected >= this.diamondsNeeded) {
+                    this.winGame();
+                    return;
+                } else {
+                    // Not enough diamonds - block movement
+                    return;
+                }
             } else {
                 this.sound.playStep();
             }
