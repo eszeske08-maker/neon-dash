@@ -1074,8 +1074,10 @@ class Game {
         const breath = Math.sin(this.globalTime * 0.008) * 1;
         this.ctx.fillRect(x + 4 - breath, y + 4 - breath, TILE_SIZE - 8 + breath * 2, TILE_SIZE - 8 + breath * 2);
 
-        // Eyes
-        this.ctx.fillStyle = '#fff';
+        // Eyes - dynamic color based on theme
+        // Use black eyes for Theme 2 (white player), white for others
+        const eyeColor = (this.currentLevelIndex % THEMES.length) === 2 ? '#000' : '#fff';
+        this.ctx.fillStyle = eyeColor;
         this.ctx.shadowBlur = 0;
 
         // Look direction
