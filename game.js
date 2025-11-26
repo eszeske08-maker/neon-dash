@@ -619,6 +619,7 @@ class Game {
 
         this.physicsTimer = 0; // Control falling speed
         this.shakeTimer = 0;
+        this.flashTimer = 0; // Flash effect for exit open
         this.globalTime = 0;
         this.currentTheme = THEMES[0];
         this.highScorePending = false;
@@ -693,6 +694,7 @@ class Game {
         this.fallingEntities.clear();
         this.fallingEntityFrames.clear(); // Clear falling duration tracking
         this.shakeTimer = 0;
+        this.flashTimer = 0;
 
         // Select Theme
         const themeIndex = this.currentLevelIndex % THEMES.length;
@@ -828,6 +830,11 @@ class Game {
             if (this.shakeTimer < 0) this.shakeTimer = 0;
         }
 
+        if (this.flashTimer > 0) {
+            this.flashTimer -= dt;
+            if (this.flashTimer < 0) this.flashTimer = 0;
+        }
+
         this.globalTime += dt;
 
         this.stars.forEach(star => {
@@ -916,6 +923,12 @@ class Game {
         this.ctx.fillStyle = this.currentTheme.background;
         this.ctx.fillRect(0, 0, this.width, this.height);
 
+        // Flash Background if Exit just opened
+        if (this.flashTimer > 0) {
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+        }
+
         this.ctx.fillStyle = '#ffffff';
         this.stars.forEach(star => {
             this.ctx.globalAlpha = Math.random() * 0.5 + 0.3;
@@ -979,40 +992,7 @@ class Game {
                 const isBorder = x === 0 || x === GRID_WIDTH - 1 || y === 0 || y === GRID_HEIGHT - 1;
 
                 if (isBorder) {
-                    // Steel Plate Style (Border / Titanium Wall)
-                    const wallColor = this.currentTheme[TYPES.WALL];
-
-                    // Base
-                    this.ctx.fillStyle = wallColor;
-                    this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
-
-                    // 3D Bevel Effect
-                    this.ctx.lineWidth = 2;
-                    this.ctx.strokeStyle = '#ffffff40'; // Highlight
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(cx + TILE_SIZE, cy);
-                    this.ctx.lineTo(cx, cy);
-                    this.ctx.lineTo(cx, cy + TILE_SIZE);
-                    this.ctx.stroke();
-
-                    this.ctx.strokeStyle = '#00000060'; // Shadow
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(cx + TILE_SIZE, cy);
-                    this.ctx.lineTo(cx + TILE_SIZE, cy + TILE_SIZE);
-                    this.ctx.lineTo(cx, cy + TILE_SIZE);
-                    this.ctx.stroke();
-
-                    // Inner Plate
-                    this.ctx.fillStyle = '#00000020';
-                    this.ctx.fillRect(cx + 4, cy + 4, TILE_SIZE - 8, TILE_SIZE - 8);
-
-                    // Rivets (4 corners)
-                    this.ctx.fillStyle = this.currentTheme.wallGlow;
-                    const rivetSize = 2;
-                    this.ctx.fillRect(cx + 6, cy + 6, rivetSize, rivetSize);
-                    this.ctx.fillRect(cx + TILE_SIZE - 8, cy + 6, rivetSize, rivetSize);
-                    this.ctx.fillRect(cx + 6, cy + TILE_SIZE - 8, rivetSize, rivetSize);
-                    this.ctx.fillRect(cx + TILE_SIZE - 8, cy + TILE_SIZE - 8, rivetSize, rivetSize);
+                    this.drawSteelWall(cx, cy);
                 } else {
                     // Inner Wall Style (Original / Brick-like)
                     this.ctx.fillStyle = this.currentTheme[TYPES.WALL];
@@ -1046,6 +1026,43 @@ class Game {
                 this.ctx.fillRect(cx + 12, cy + 8, 2, 16);
                 break;
         }
+    }
+
+    drawSteelWall(cx, cy) {
+        // Steel Plate Style (Border / Titanium Wall)
+        const wallColor = this.currentTheme[TYPES.WALL];
+
+        // Base
+        this.ctx.fillStyle = wallColor;
+        this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+
+        // 3D Bevel Effect
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeStyle = '#ffffff40'; // Highlight
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx + TILE_SIZE, cy);
+        this.ctx.lineTo(cx, cy);
+        this.ctx.lineTo(cx, cy + TILE_SIZE);
+        this.ctx.stroke();
+
+        this.ctx.strokeStyle = '#00000060'; // Shadow
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx + TILE_SIZE, cy);
+        this.ctx.lineTo(cx + TILE_SIZE, cy + TILE_SIZE);
+        this.ctx.lineTo(cx, cy + TILE_SIZE);
+        this.ctx.stroke();
+
+        // Inner Plate
+        this.ctx.fillStyle = '#00000020';
+        this.ctx.fillRect(cx + 4, cy + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+
+        // Rivets (4 corners)
+        this.ctx.fillStyle = this.currentTheme.wallGlow;
+        const rivetSize = 2;
+        this.ctx.fillRect(cx + 6, cy + 6, rivetSize, rivetSize);
+        this.ctx.fillRect(cx + TILE_SIZE - 8, cy + 6, rivetSize, rivetSize);
+        this.ctx.fillRect(cx + 6, cy + TILE_SIZE - 8, rivetSize, rivetSize);
+        this.ctx.fillRect(cx + TILE_SIZE - 8, cy + TILE_SIZE - 8, rivetSize, rivetSize);
     }
 
     drawRock(x, y) {
@@ -1168,17 +1185,32 @@ class Game {
 
     drawExit(x, y) {
         const isOpen = this.diamondsCollected >= this.diamondsNeeded;
-        this.ctx.fillStyle = isOpen ? this.currentTheme[TYPES.EXIT] : '#550000';
-        this.ctx.strokeStyle = isOpen ? '#fff' : '#ff0000';
-        this.ctx.lineWidth = 2;
 
-        // Draw frame
-        this.ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        // If locked, it looks exactly like the steel wall
+        if (!isOpen) {
+            this.drawSteelWall(x, y);
+            return;
+        }
 
-        // Draw door
-        this.ctx.fillRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+        // If open, flash between steel wall and exit door
+        // Flash speed: 250ms
+        const flash = Math.floor(this.globalTime / 250) % 2 === 0;
 
-        if (isOpen) {
+        if (flash) {
+            this.drawSteelWall(x, y);
+        } else {
+            // Draw Open Exit (Green Door)
+            this.ctx.fillStyle = this.currentTheme[TYPES.EXIT];
+            this.ctx.strokeStyle = '#fff';
+            this.ctx.lineWidth = 2;
+
+            // Draw frame
+            this.ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+
+            // Draw door
+            this.ctx.fillRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+
+            // Glow effect
             this.ctx.shadowBlur = 15;
             this.ctx.shadowColor = this.currentTheme[TYPES.EXIT];
             this.ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
@@ -1574,6 +1606,13 @@ class Game {
         this.grid[y][x] = TYPES.EMPTY;
         this.score += 10;
         this.diamondsCollected++;
+
+        // Trigger Flash if Exit opens
+        if (this.diamondsCollected === this.diamondsNeeded) {
+            this.flashTimer = 150; // 150ms white flash
+            this.sound.playTone(1200, 'square', 0.2, 0.2); // High pitch alert
+        }
+
         this.spawnParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, '#00ffff', 10);
         this.sound.playCollect();
         this.updateUI();
