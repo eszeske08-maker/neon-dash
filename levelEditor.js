@@ -169,6 +169,13 @@ class LevelEditor {
 
     placeTile(x, y) {
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            // Prevent drawing on border walls UNLESS it's an EXIT
+            const isBorder = x === 0 || x === this.width - 1 || y === 0 || y === this.height - 1;
+
+            if (isBorder && this.selectedTile !== TYPES.EXIT) {
+                return; // Cannot place anything else on border
+            }
+
             this.grid[y][x] = this.selectedTile;
         }
     }
