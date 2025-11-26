@@ -976,13 +976,53 @@ class Game {
                 this.ctx.fillRect(cx + 10, cy + 20, 4, 4);
                 break;
             case TYPES.WALL:
-                this.ctx.fillStyle = this.currentTheme[TYPES.WALL];
-                this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
-                this.ctx.strokeStyle = this.currentTheme.wallGlow;
-                this.ctx.lineWidth = 2;
-                this.ctx.strokeRect(cx + 2, cy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                this.ctx.fillStyle = '#424242';
-                this.ctx.fillRect(cx + 8, cy + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+                const isBorder = x === 0 || x === GRID_WIDTH - 1 || y === 0 || y === GRID_HEIGHT - 1;
+
+                if (isBorder) {
+                    // Steel Plate Style (Border / Titanium Wall)
+                    const wallColor = this.currentTheme[TYPES.WALL];
+
+                    // Base
+                    this.ctx.fillStyle = wallColor;
+                    this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+
+                    // 3D Bevel Effect
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeStyle = '#ffffff40'; // Highlight
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(cx + TILE_SIZE, cy);
+                    this.ctx.lineTo(cx, cy);
+                    this.ctx.lineTo(cx, cy + TILE_SIZE);
+                    this.ctx.stroke();
+
+                    this.ctx.strokeStyle = '#00000060'; // Shadow
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(cx + TILE_SIZE, cy);
+                    this.ctx.lineTo(cx + TILE_SIZE, cy + TILE_SIZE);
+                    this.ctx.lineTo(cx, cy + TILE_SIZE);
+                    this.ctx.stroke();
+
+                    // Inner Plate
+                    this.ctx.fillStyle = '#00000020';
+                    this.ctx.fillRect(cx + 4, cy + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+
+                    // Rivets (4 corners)
+                    this.ctx.fillStyle = this.currentTheme.wallGlow;
+                    const rivetSize = 2;
+                    this.ctx.fillRect(cx + 6, cy + 6, rivetSize, rivetSize);
+                    this.ctx.fillRect(cx + TILE_SIZE - 8, cy + 6, rivetSize, rivetSize);
+                    this.ctx.fillRect(cx + 6, cy + TILE_SIZE - 8, rivetSize, rivetSize);
+                    this.ctx.fillRect(cx + TILE_SIZE - 8, cy + TILE_SIZE - 8, rivetSize, rivetSize);
+                } else {
+                    // Inner Wall Style (Original / Brick-like)
+                    this.ctx.fillStyle = this.currentTheme[TYPES.WALL];
+                    this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+                    this.ctx.strokeStyle = this.currentTheme.wallGlow;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(cx + 2, cy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    this.ctx.fillStyle = '#424242';
+                    this.ctx.fillRect(cx + 8, cy + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+                }
                 break;
             case TYPES.ROCK:
                 this.drawRock(cx, cy);
