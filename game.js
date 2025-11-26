@@ -617,6 +617,7 @@ class Game {
         this.particles = [];
         this.enemies = [];
 
+        this.physicsTimer = 0; // Control falling speed
         this.shakeTimer = 0;
         this.globalTime = 0;
         this.currentTheme = THEMES[0];
@@ -896,7 +897,13 @@ class Game {
             this.player.moveTimer = 0;
         }
 
-        this.updatePhysics();
+        // Slow down physics (falling rocks) to be slightly slower than player
+        this.physicsTimer += dt;
+        if (this.physicsTimer > 120) {
+            this.updatePhysics();
+            this.physicsTimer = 0;
+        }
+
         this.updateEnemies(dt);
     }
 
@@ -1637,10 +1644,14 @@ class Game {
                         const prevFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
                         this.fallingEntityFrames.set(`${x},${y + 1}`, prevFrames + 1);
                     } else if (this.fallingEntities.has(`${x},${y}`) && this.player.x === x && this.player.y === y + 1) {
-                        // Crush player ONLY if falling for 3+ frames (grace period)
+                        // Crush player if rock has ANY momentum (1+ frames)
+                        // This matches original Boulder Dash: you can't outrun a falling rock downwards
                         const fallingFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
-                        if (fallingFrames >= 3) {
+                        if (fallingFrames >= 1) {
                             this.die();
+                        } else {
+                            // Increment frame count while sitting on player so grace period eventually expires!
+                            this.fallingEntityFrames.set(`${x},${y}`, fallingFrames + 1);
                         }
                     } else if (this.fallingEntities.has(`${x},${y}`) && this.grid[y + 1][x] === TYPES.ENEMY) {
                         // Crush enemy
