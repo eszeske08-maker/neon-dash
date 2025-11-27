@@ -331,6 +331,7 @@ class LevelEditor {
 
         document.getElementById('editor-overlay').classList.add('hidden');
         this.game.state = STATE.PLAYING;
+        this.game.isTesting = true; // Flag for test mode
         this.game.startGame();
         console.log('Test Play started!');
     }

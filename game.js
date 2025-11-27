@@ -616,6 +616,7 @@ class Game {
         this.fallingEntityFrames = new Map(); // Track falling duration
         this.particles = [];
         this.enemies = [];
+        this.isTesting = false; // Track if in test mode from editor
 
         this.physicsTimer = 0; // Control falling speed
         this.shakeTimer = 0;
@@ -1855,6 +1856,18 @@ class Game {
 
     die() {
         if (this.state === STATE.GAMEOVER) return;
+
+        if (this.isTesting) {
+            this.showMessage("TEST FAILED", "Returning to Editor...");
+            setTimeout(() => {
+                this.state = STATE.EDITOR;
+                document.getElementById('editor-overlay').classList.remove('hidden');
+                document.getElementById('message-overlay').classList.add('hidden');
+                this.isTesting = false;
+            }, 2000);
+            return;
+        }
+
         this.state = STATE.GAMEOVER;
         this.sound.stopMusic();
 
@@ -1893,6 +1906,19 @@ class Game {
 
     winGame() {
         if (this.state === STATE.TRANSITION) return;
+
+        if (this.isTesting) {
+            this.showMessage("TEST SUCCESS", "Returning to Editor...");
+            this.sound.playWin();
+            setTimeout(() => {
+                this.state = STATE.EDITOR;
+                document.getElementById('editor-overlay').classList.remove('hidden');
+                document.getElementById('message-overlay').classList.add('hidden');
+                this.isTesting = false;
+            }, 2000);
+            return;
+        }
+
         this.state = STATE.TRANSITION;
         this.sound.stopMusic();
 
