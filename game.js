@@ -1375,10 +1375,17 @@ class Game {
                         document.getElementById('restart-confirm-overlay').classList.add('hidden');
                         this.restartConfirmPending = false;
                         this.restartConfirmTimer = 0;
-                        if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
-                            this.currentLevelIndex = 0;
+
+                        // If in test mode, restart the test level
+                        if (this.isTesting) {
+                            this.levelEditor.testPlay();
+                        } else {
+                            // Normal mode: restart current story level
+                            if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
+                                this.currentLevelIndex = 0;
+                            }
+                            this.resetGame();
                         }
-                        this.resetGame();
                     } else {
                         // First press - show confirmation
                         this.restartConfirmPending = true;
