@@ -1512,17 +1512,40 @@ class Game {
     }
 
     vibrate(duration, weakMagnitude = 1.0, strongMagnitude = 1.0) {
+        // 1. Gamepad Vibration
         const gp = navigator.getGamepads()[0];
-        if (gp && gp.vibrationActuator) {
+        if (gp) {
+            // Try Chrome/Edge standard method
+            if (gp.vibrationActuator && typeof gp.vibrationActuator.playEffect === 'function') {
+                try {
+                    gp.vibrationActuator.playEffect('dual-rumble', {
+                        startDelay: 0,
+                        duration: duration,
+                        weakMagnitude: weakMagnitude,
+                        strongMagnitude: strongMagnitude
+                    });
+                } catch (e) {
+                    console.warn('playEffect failed:', e);
+                }
+            }
+            // Try Firefox fallback (pulse method)
+            else if (gp.vibrationActuator && typeof gp.vibrationActuator.pulse === 'function') {
+                try {
+                    const intensity = Math.max(weakMagnitude, strongMagnitude);
+                    gp.vibrationActuator.pulse(intensity, duration);
+                } catch (e) {
+                    console.warn('pulse failed:', e);
+                }
+            }
+        }
+
+        // 2. Mobile Device Vibration (Android)
+        // Works on Android Chrome/Firefox. Does NOT work on iOS (Apple restriction).
+        if (navigator.vibrate) {
             try {
-                gp.vibrationActuator.playEffect('dual-rumble', {
-                    startDelay: 0,
-                    duration: duration,
-                    weakMagnitude: weakMagnitude,
-                    strongMagnitude: strongMagnitude
-                });
+                navigator.vibrate(duration);
             } catch (e) {
-                // Ignore if not supported
+                // Ignore errors
             }
         }
     }
