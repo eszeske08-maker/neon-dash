@@ -846,6 +846,12 @@ class Game {
             }
         });
 
+        // Editor gamepad input
+        if (this.state === STATE.EDITOR) {
+            this.levelEditor.handleGamepadInput(dt);
+            return;
+        }
+
         if (this.state === STATE.MENU) {
             this.highScoreTimer += dt;
             if (this.highScoreTimer > 3000) {

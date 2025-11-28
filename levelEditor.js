@@ -12,6 +12,12 @@ class LevelEditor {
         this.cursorY = -1;
         this.showGrid = true;
 
+        // Gamepad support
+        this.gamepadCursorX = Math.floor(GRID_WIDTH / 2);
+        this.gamepadCursorY = Math.floor(GRID_HEIGHT / 2);
+        this.gamepadMoveTimer = 0;
+        this.gamepadButtonLocked = {};
+
         this.levelName = "Custom Level";
         this.diamondsNeeded = 10;
         this.timeLimit = 120;
@@ -130,6 +136,82 @@ class LevelEditor {
         }
     }
 
+    handleGamepadInput(dt) {
+        const gamepads = navigator.getGamepads();
+        const gamepad = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+        if (!gamepad) return;
+
+        // D-pad/Stick navigation
+        this.gamepadMoveTimer -= dt;
+        if (this.gamepadMoveTimer <= 0) {
+            const deadzone = 0.3;
+            let moved = false;
+
+            if (gamepad.buttons[12]?.pressed || gamepad.axes[1] < -deadzone) { // Up
+                this.gamepadCursorY = Math.max(0, this.gamepadCursorY - 1);
+                moved = true;
+            }
+            if (gamepad.buttons[13]?.pressed || gamepad.axes[1] > deadzone) { // Down
+                this.gamepadCursorY = Math.min(this.height - 1, this.gamepadCursorY + 1);
+                moved = true;
+            }
+            if (gamepad.buttons[14]?.pressed || gamepad.axes[0] < -deadzone) { // Left
+                this.gamepadCursorX = Math.max(0, this.gamepadCursorX - 1);
+                moved = true;
+            }
+            if (gamepad.buttons[15]?.pressed || gamepad.axes[0] > deadzone) { // Right
+                this.gamepadCursorX = Math.min(this.width - 1, this.gamepadCursorX + 1);
+                moved = true;
+            }
+
+            if (moved) {
+                this.gamepadMoveTimer = 100;
+                this.cursorX = this.gamepadCursorX;
+                this.cursorY = this.gamepadCursorY;
+            }
+        }
+
+        // Button actions
+        const checkButton = (index, action) => {
+            if (gamepad.buttons[index]?.pressed) {
+                if (!this.gamepadButtonLocked[index]) {
+                    this.gamepadButtonLocked[index] = true;
+                    action();
+                }
+            } else {
+                this.gamepadButtonLocked[index] = false;
+            }
+        };
+
+        checkButton(0, () => this.placeTile(this.gamepadCursorX, this.gamepadCursorY)); // A = Place
+        checkButton(1, () => this.removeTile(this.gamepadCursorX, this.gamepadCursorY)); // B = Erase
+        checkButton(2, () => this.showGrid = !this.showGrid); // X = Toggle Grid
+        checkButton(3, () => this.testPlay()); // Y = Test
+
+        // L1/R1 = Tool cycling
+        checkButton(4, () => {
+            const tools = [TYPES.EMPTY, TYPES.DIRT, TYPES.WALL, TYPES.ROCK, TYPES.DIAMOND, TYPES.PLAYER, TYPES.ENEMY, TYPES.EXIT, TYPES.DYNAMITE_PICKUP];
+            const idx = tools.indexOf(this.selectedTile);
+            this.selectedTile = tools[(idx - 1 + tools.length) % tools.length];
+            this.updatePaletteUI();
+        });
+        checkButton(5, () => {
+            const tools = [TYPES.EMPTY, TYPES.DIRT, TYPES.WALL, TYPES.ROCK, TYPES.DIAMOND, TYPES.PLAYER, TYPES.ENEMY, TYPES.EXIT, TYPES.DYNAMITE_PICKUP];
+            const idx = tools.indexOf(this.selectedTile);
+            this.selectedTile = tools[(idx + 1) % tools.length];
+            this.updatePaletteUI();
+        });
+
+        checkButton(6, () => this.saveLevel()); // L2 = Save
+        checkButton(7, () => this.loadLevel()); // R2 = Load
+        checkButton(9, () => { // Start = Enemy type
+            const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.SEEKER, ENEMY_TYPES.PATROLLER];
+            const idx = types.indexOf(this.selectedEnemyType);
+            this.selectedEnemyType = types[(idx + 1) % types.length];
+            this.updateEnemyTypeUI();
+        });
+    }
+
     handleMouseDown(e) {
         if (this.game.state !== STATE.EDITOR) return;
 
@@ -169,13 +251,6 @@ class LevelEditor {
 
     placeTile(x, y) {
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-            // Prevent drawing on border walls UNLESS it's an EXIT
-            const isBorder = x === 0 || x === this.width - 1 || y === 0 || y === this.height - 1;
-
-            if (isBorder && this.selectedTile !== TYPES.EXIT) {
-                return; // Cannot place anything else on border
-            }
-
             this.grid[y][x] = this.selectedTile;
         }
     }
@@ -331,7 +406,6 @@ class LevelEditor {
 
         document.getElementById('editor-overlay').classList.add('hidden');
         this.game.state = STATE.PLAYING;
-        this.game.isTesting = true; // Flag for test mode
         this.game.startGame();
         console.log('Test Play started!');
     }
