@@ -17,6 +17,7 @@ class LevelEditor {
         this.gamepadCursorY = Math.floor(GRID_HEIGHT / 2);
         this.gamepadMoveTimer = 0;
         this.gamepadButtonLocked = {};
+        this.lastGamepadId = null;
 
         this.levelName = "Custom Level";
         this.diamondsNeeded = 10;
@@ -126,7 +127,6 @@ class LevelEditor {
         }
 
         if (key === 's' || key === 'S') {
-            this.saveLevel();
             return;
         }
 
@@ -137,6 +137,8 @@ class LevelEditor {
     }
 
     handleGamepadInput(dt) {
+        this.updateControlsUI();
+
         const gamepads = navigator.getGamepads();
         const gamepad = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
         if (!gamepad) return;
@@ -365,12 +367,73 @@ class LevelEditor {
     updateEnemyTypeUI() {
         const indicator = document.getElementById('enemy-type-indicator');
         if (indicator) {
-            const typeNames = {
-                [ENEMY_TYPES.BASIC]: 'BASIC',
-                [ENEMY_TYPES.SEEKER]: 'SEEKER',
-                [ENEMY_TYPES.PATROLLER]: 'PATROLLER'
+            indicator.innerText = this.getEnemyTypeName();
+        }
+    }
+
+    getEnemyTypeName() {
+        const typeNames = {
+            [ENEMY_TYPES.BASIC]: 'BASIC',
+            [ENEMY_TYPES.SEEKER]: 'SEEKER',
+            [ENEMY_TYPES.PATROLLER]: 'PATROLLER'
+        };
+        return typeNames[this.selectedEnemyType] || 'BASIC';
+    }
+
+    updateControlsUI() {
+        const gamepads = navigator.getGamepads();
+        const gamepad = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+        const gamepadId = gamepad ? gamepad.id : null;
+
+        // Only update if controller state changed
+        if (this.lastGamepadId === gamepadId) return;
+        this.lastGamepadId = gamepadId;
+
+        const hints = {
+            exit: document.getElementById('hint-exit'),
+            grid: document.getElementById('hint-grid'),
+            enemy: document.getElementById('hint-enemy'),
+            test: document.getElementById('hint-test'),
+            save: document.getElementById('hint-save'),
+            load: document.getElementById('hint-load'),
+            tool: document.getElementById('hint-tool'),
+            erase: document.getElementById('hint-erase')
+        };
+
+        if (!hints.exit) return;
+
+        if (gamepad) {
+            // Detect Controller Type (PS vs Xbox/Generic)
+            const isPS = gamepad.id.toLowerCase().includes('playstation') ||
+                gamepad.id.toLowerCase().includes('dualshock') ||
+                gamepad.id.toLowerCase().includes('dualsense');
+
+            const labels = isPS ? {
+                exit: 'Share', grid: '□', enemy: 'Options', test: '△',
+                save: 'L2', load: 'R2', tool: 'L1/R1', erase: '○', place: '✕'
+            } : {
+                exit: 'Back', grid: 'X', enemy: 'Start', test: 'Y',
+                save: 'LT', load: 'RT', tool: 'LB/RB', erase: 'B', place: 'A'
             };
-            indicator.innerText = typeNames[this.selectedEnemyType] || 'BASIC';
+
+            hints.exit.innerText = `${labels.exit} / L: Exit`;
+            hints.grid.innerText = `${labels.grid} / G: Grid`;
+            hints.enemy.innerHTML = `${labels.enemy} / E: Enemy (<span id="enemy-type-indicator">${this.getEnemyTypeName()}</span>)`;
+            hints.test.innerText = `${labels.test} / T: Test Play`;
+            hints.save.innerText = `${labels.save} / S: Save`;
+            hints.load.innerText = `${labels.load} / O: Load`;
+            hints.tool.innerText = `${labels.tool} / 1-8: Tool`;
+            hints.erase.innerText = `${labels.erase} / R-Click: Erase (${labels.place}: Place)`;
+        } else {
+            // Keyboard Defaults
+            hints.exit.innerText = 'L: Exit Editor';
+            hints.grid.innerText = 'G: Toggle Grid';
+            hints.enemy.innerHTML = 'E: Cycle Enemy (<span id="enemy-type-indicator">' + this.getEnemyTypeName() + '</span>)';
+            hints.test.innerText = 'T: Test Play';
+            hints.save.innerText = 'S: Save';
+            hints.load.innerText = 'O: Load';
+            hints.tool.innerText = '1-8: Select Tool';
+            hints.erase.innerText = 'Right Click: Erase';
         }
     }
 
