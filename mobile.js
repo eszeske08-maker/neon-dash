@@ -17,6 +17,19 @@
             });
         }
 
+        // LEVEL EDITOR
+        const editorBtn = document.getElementById('editor-btn');
+        if (editorBtn) {
+            editorBtn.addEventListener('click', () => {
+                if (game.state === 0) { // STATE.MENU
+                    game.levelEditor.reset();
+                    game.state = 7; // STATE.EDITOR
+                    document.getElementById('menu-screen').classList.add('hidden');
+                    document.getElementById('editor-overlay').classList.remove('hidden');
+                }
+            });
+        }
+
         // D-pad
         const keyMap = { 'up': 'ArrowUp', 'down': 'ArrowDown', 'left': 'ArrowLeft', 'right': 'ArrowRight' };
         document.querySelectorAll('.dpad-btn').forEach(btn => {
@@ -54,11 +67,12 @@
                 lock = true;
                 setTimeout(() => lock = false, 300);
                 if (game.state === 1) {
+                    game.prevState = 1; // Save previous state
                     game.state = 6;
                     document.getElementById('pause-overlay').classList.remove('hidden');
                 }
                 else if (game.state === 6) {
-                    game.state = 1;
+                    game.state = game.prevState || 1; // Restore previous state
                     document.getElementById('pause-overlay').classList.add('hidden');
                 }
                 vib(15);

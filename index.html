@@ -33,6 +33,7 @@
                     </ul>
                 </div>
                 <button id="start-btn" class="menu-button">START GAME</button>
+                <button id="editor-btn" class="menu-button mobile-only">LEVEL EDITOR</button>
                 <p class="menu-hint">SPACE - Start | L - Level Editor</p>
             </div>
 
@@ -51,13 +52,13 @@
 
             <div id="pause-overlay" class="hidden">
                 <h1>PAUSED</h1>
-                <p>Press ESC to Resume</p>
-                <p class="pause-hint">R - Restart Level | M - Toggle Sound | F - Fullscreen</p>
-            </div>
-
-            <div id="restart-confirm-overlay" class="hidden">
-                <h2>RESTART LEVEL?</h2>
-                <p>Press R again to confirm</p>
+                <div class="pause-menu-buttons">
+                    <button id="btn-resume" class="menu-button">RESUME</button>
+                    <button id="btn-restart" class="menu-button">RESTART LEVEL</button>
+                    <button id="btn-sound" class="menu-button">SOUND: ON</button>
+                    <button id="btn-fullscreen" class="menu-button">FULLSCREEN</button>
+                    <button id="btn-menu" class="menu-button">EXIT TO MENU</button>
+                </div>
             </div>
 
             <div id="editor-overlay" class="hidden">
@@ -95,9 +96,9 @@
         </div>
     </div>
 
-    <script src="levelEditor.js?v=10"></script>
-    <script src="game.js?v=10"></script>
-    <script src="mobile.js?v=10"></script>
+    <script src="levelEditor.js?v=99"></script>
+    <script src="game.js?v=99"></script>
+    <script src="mobile.js?v=99"></script>
 </body>
 
 </html>

@@ -44,6 +44,18 @@ class LevelEditor {
         this.grid[this.height - 2][this.width - 2] = TYPES.EXIT;
     }
 
+    reset() {
+        this.grid = [];
+        this.selectedTile = TYPES.DIRT;
+        this.selectedEnemyType = ENEMY_TYPES.BASIC;
+        this.levelName = "Custom Level";
+        this.diamondsNeeded = 10;
+        this.timeLimit = 120;
+        this.initGrid();
+        this.updatePaletteUI();
+        this.updateEnemyTypeUI();
+    }
+
     setupInput() {
         this.game.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.game.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -206,6 +218,15 @@ class LevelEditor {
 
         checkButton(6, () => this.saveLevel()); // L2 = Save
         checkButton(7, () => this.loadLevel()); // R2 = Load
+
+        // Select/Back = Exit to Menu
+        checkButton(8, () => {
+            this.game.state = 0; // STATE.MENU
+            document.getElementById('editor-overlay').classList.add('hidden');
+            document.getElementById('menu-screen').classList.remove('hidden');
+            this.game.gamepadActionLocked = true;
+        });
+
         checkButton(9, () => { // Start = Enemy type
             const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.SEEKER, ENEMY_TYPES.PATROLLER];
             const idx = types.indexOf(this.selectedEnemyType);
@@ -215,24 +236,6 @@ class LevelEditor {
     }
 
     handleMouseDown(e) {
-        if (this.game.state !== STATE.EDITOR) return;
-
-        const rect = this.game.canvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / TILE_SIZE);
-        const y = Math.floor((e.clientY - rect.top) / TILE_SIZE);
-
-        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-            if (e.button === 0) {
-                this.isDrawing = true;
-                this.placeTile(x, y);
-            } else if (e.button === 2) {
-                this.isErasing = true;
-                this.removeTile(x, y);
-            }
-        }
-    }
-
-    handleMouseMove(e) {
         if (this.game.state !== STATE.EDITOR) return;
 
         const rect = this.game.canvas.getBoundingClientRect();
@@ -469,6 +472,7 @@ class LevelEditor {
 
         document.getElementById('editor-overlay').classList.add('hidden');
         this.game.state = STATE.PLAYING;
+        this.game.isTesting = true;
         this.game.startGame();
         console.log('Test Play started!');
     }

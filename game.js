@@ -654,8 +654,7 @@ class Game {
         this.fps = 60;
         this.frameCount = 0;
         this.fpsTime = 0;
-        this.restartConfirmPending = false;
-        this.restartConfirmTimer = 0;
+
         this.prevState = null; // Store state before pause
 
         // Load sound preference
@@ -677,6 +676,71 @@ class Game {
         this.nameInput = document.getElementById('player-name-input');
         this.submitBtn = document.getElementById('submit-score-btn');
         this.submitBtn.addEventListener('click', () => this.submitHighScore());
+
+        // Pause Menu UI
+        document.getElementById('btn-resume').addEventListener('click', () => {
+            if (this.state === STATE.PAUSED) {
+                this.state = this.prevState || STATE.PLAYING;
+                document.getElementById('pause-overlay').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            if (this.state === STATE.PAUSED) {
+                document.getElementById('pause-overlay').classList.add('hidden');
+                if (this.isTesting) {
+                    this.levelEditor.testPlay();
+                } else {
+                    this.resetGame();
+                }
+            }
+        });
+
+        document.getElementById('btn-sound').addEventListener('click', () => {
+            this.sound.enabled = !this.sound.enabled;
+            localStorage.setItem('soundEnabled', this.sound.enabled.toString());
+            document.getElementById('btn-sound').innerText = `SOUND: ${this.sound.enabled ? 'ON' : 'OFF'}`;
+        });
+
+        document.getElementById('btn-fullscreen').addEventListener('click', () => {
+            const elem = document.documentElement;
+            // Check if already in fullscreen
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement ||
+                document.mozFullScreenElement || document.msFullscreenElement;
+
+            if (!isFullscreen) {
+                // Enter fullscreen - try all vendor prefixes
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.mozRequestFullScreen) {
+                    elem.mozRequestFullScreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen - try all vendor prefixes
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        });
+
+        document.getElementById('btn-menu').addEventListener('click', () => {
+            if (this.state === STATE.PAUSED) {
+                this.state = STATE.MENU;
+                document.getElementById('pause-overlay').classList.add('hidden');
+                this.sound.stopMusic();
+                this.updateMenuUI();
+            }
+        });
 
         this.updateMenuUI();
         this.loop = this.loop.bind(this);
@@ -817,14 +881,7 @@ class Game {
             this.fpsTime = 0;
         }
 
-        // Restart confirmation timeout
-        if (this.restartConfirmPending) {
-            this.restartConfirmTimer -= dt;
-            if (this.restartConfirmTimer <= 0) {
-                this.restartConfirmPending = false;
-                document.getElementById('restart-confirm-overlay').classList.add('hidden');
-            }
-        }
+
 
         if (this.shakeTimer > 0) {
             this.shakeTimer -= dt;
@@ -846,6 +903,58 @@ class Game {
             }
         });
 
+        // Pause Menu Gamepad Input
+        if (this.state === STATE.PAUSED) {
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+            if (gp) {
+                let anyButtonPressed = false;
+
+                // Resume (A or B button only, not Start)
+                if ((gp.buttons[0].pressed || gp.buttons[1].pressed) && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    this.state = this.prevState || STATE.PLAYING;
+                    document.getElementById('pause-overlay').classList.add('hidden');
+                    anyButtonPressed = true;
+                }
+                // Y - Restart
+                else if (gp.buttons[3].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    document.getElementById('pause-overlay').classList.add('hidden');
+                    if (this.isTesting) {
+                        this.levelEditor.testPlay();
+                    } else {
+                        this.resetGame();
+                    }
+                    anyButtonPressed = true;
+                }
+                // X - Sound Toggle
+                else if (gp.buttons[2].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    this.sound.enabled = !this.sound.enabled;
+                    localStorage.setItem('soundEnabled', this.sound.enabled.toString());
+                    document.getElementById('btn-sound').innerText = `SOUND: ${this.sound.enabled ? 'ON' : 'OFF'}`;
+                    anyButtonPressed = true;
+                }
+                // Select/Back - Menu
+                else if (gp.buttons[8].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    this.state = STATE.MENU;
+                    document.getElementById('pause-overlay').classList.add('hidden');
+                    this.sound.stopMusic();
+                    this.updateMenuUI();
+                    anyButtonPressed = true;
+                }
+
+                // Reset lock when no buttons pressed
+                if (!gp.buttons[0].pressed && !gp.buttons[1].pressed && !gp.buttons[2].pressed &&
+                    !gp.buttons[3].pressed && !gp.buttons[8].pressed) {
+                    this.gamepadActionLocked = false;
+                }
+            }
+            return;
+        }
+
         // Editor gamepad input
         if (this.state === STATE.EDITOR) {
             this.levelEditor.handleGamepadInput(dt);
@@ -853,6 +962,34 @@ class Game {
         }
 
         if (this.state === STATE.MENU) {
+            // Gamepad support in menu
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+            if (gp) {
+                // Y - Level Editor (check FIRST to avoid conflict)
+                if (gp.buttons[3].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    this.levelEditor.reset();
+                    this.state = STATE.EDITOR;
+                    document.getElementById('menu-screen').classList.add('hidden');
+                    document.getElementById('editor-overlay').classList.remove('hidden');
+                    // Lock Y button in editor to prevent immediate test play
+                    this.levelEditor.gamepadButtonLocked[3] = true;
+                }
+                // A or Start - Start Game
+                else if ((gp.buttons[0].pressed || gp.buttons[9].pressed) && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    if (this.highScorePending) return;
+                    this.initLevel();
+                    this.startGame();
+                }
+                // Reset lock when no buttons pressed
+                else if (!gp.buttons[0].pressed && !gp.buttons[3].pressed && !gp.buttons[9].pressed) {
+                    this.gamepadActionLocked = false;
+                }
+            }
+
+            // High score page auto-rotation
             this.highScoreTimer += dt;
             if (this.highScoreTimer > 3000) {
                 this.highScoreTimer = 0;
@@ -868,6 +1005,20 @@ class Game {
         }
 
         if (this.state !== STATE.PLAYING) return;
+
+        // Gamepad Start button to pause
+        const gamepads = navigator.getGamepads();
+        const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+        if (gp && gp.buttons[9].pressed && !this.gamepadPauseLocked) {
+            this.gamepadPauseLocked = true;
+            this.gamepadActionLocked = true; // Prevent immediate resume
+            this.prevState = STATE.PLAYING;
+            this.state = STATE.PAUSED;
+            document.getElementById('pause-overlay').classList.remove('hidden');
+        }
+        if (gp && !gp.buttons[9].pressed) {
+            this.gamepadPauseLocked = false;
+        }
 
         this.timeLeft -= dt / 1000;
         if (this.timeLeft <= 0) {
@@ -1226,6 +1377,169 @@ class Game {
     }
 
 
+    handleInput(e, isKeyDown) {
+        try {
+            // Editor Input Handling
+            if (this.state === STATE.EDITOR) {
+                this.levelEditor.handleInput(e, isKeyDown);
+                // Allow L key to toggle back to menu even in editor mode
+                if ((e.key === 'l' || e.key === 'L') && isKeyDown) {
+                    this.state = STATE.MENU;
+                    document.getElementById('editor-overlay').classList.add('hidden');
+                    this.updateMenuUI();
+                }
+                return;
+            }
+
+            // ESC - Pause/Unpause
+            if (e.key === 'Escape' && isKeyDown) {
+                if (this.state === STATE.PLAYING) {
+                    this.prevState = STATE.PLAYING;
+                    this.state = STATE.PAUSED;
+                    document.getElementById('pause-overlay').classList.remove('hidden');
+                    return;
+                } else if (this.state === STATE.PAUSED) {
+                    this.state = this.prevState || STATE.PLAYING;
+                    document.getElementById('pause-overlay').classList.add('hidden');
+                    return;
+                }
+            }
+
+            // M - Toggle Sound
+            if ((e.key === 'm' || e.key === 'M') && isKeyDown) {
+                this.sound.enabled = !this.sound.enabled;
+                localStorage.setItem('soundEnabled', this.sound.enabled.toString());
+                document.getElementById('btn-sound').innerText = `SOUND: ${this.sound.enabled ? 'ON' : 'OFF'}`;
+                this.showMessage(this.sound.enabled ? "SOUND ON" : "SOUND OFF", "");
+                setTimeout(() => {
+                    if (this.state !== STATE.MENU) {
+                        document.getElementById('message-overlay').classList.add('hidden');
+                    }
+                }, 1000);
+                return;
+            }
+
+            // F - Fullscreen Toggle
+            if ((e.key === 'f' || e.key === 'F') && isKeyDown) {
+                const elem = document.documentElement;
+                const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement ||
+                    document.mozFullScreenElement || document.msFullscreenElement;
+
+                if (!isFullscreen) {
+                    if (elem.requestFullscreen) {
+                        elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+                    } else if (elem.webkitRequestFullscreen) {
+                        elem.webkitRequestFullscreen();
+                    } else if (elem.mozRequestFullScreen) {
+                        elem.mozRequestFullScreen();
+                    } else if (elem.msRequestFullscreen) {
+                        elem.msRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                }
+                return;
+            }
+
+            // F3 - FPS Counter Toggle
+            if (e.key === 'F3' && isKeyDown) {
+                this.showFPS = !this.showFPS;
+                const fpsCounter = document.getElementById('fps-counter');
+                if (this.showFPS) {
+                    fpsCounter.classList.remove('hidden');
+                } else {
+                    fpsCounter.classList.add('hidden');
+                }
+                return;
+            }
+
+            // L - Toggle Level Editor
+            if ((e.key === 'l' || e.key === 'L') && isKeyDown) {
+                if (this.state === STATE.MENU) {
+                    this.levelEditor.reset();
+                    this.state = STATE.EDITOR;
+                    document.getElementById('menu-screen').classList.add('hidden');
+                    document.getElementById('editor-overlay').classList.remove('hidden');
+                } else if (this.state === STATE.EDITOR) {
+                    this.state = STATE.MENU;
+                    document.getElementById('editor-overlay').classList.add('hidden');
+                    this.updateMenuUI();
+                }
+                return;
+            }
+
+            if (this.state === STATE.NAME_ENTRY) {
+                if (isKeyDown && e.key === 'Enter') {
+                    this.submitHighScore();
+                }
+                return;
+            }
+
+            // R - Instant Restart (no confirmation needed)
+            if ((e.key === 'r' || e.key === 'R') && isKeyDown) {
+                if (this.state === STATE.GAMEOVER || this.state === STATE.WIN || this.state === STATE.PLAYING || this.state === STATE.PAUSED) {
+                    if (this.highScorePending) return;
+
+                    document.getElementById('pause-overlay').classList.add('hidden');
+
+                    // If in test mode, restart the test level
+                    if (this.isTesting) {
+                        this.levelEditor.testPlay();
+                    } else {
+                        // Normal mode: restart current story level
+                        if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
+                            this.currentLevelIndex = 0;
+                        }
+                        this.resetGame();
+                    }
+                }
+                return;
+            }
+
+            // Space/Enter for game start, restart, and dynamite (check both e.code and e.key for compatibility)
+            const isSpace = e.code === 'Space' || e.key === ' ';
+            const isEnter = e.code === 'Enter' || e.key === 'Enter';
+
+            if (isSpace || isEnter) {
+                if (isKeyDown && this.state === STATE.PLAYING && isSpace) {
+                    this.placeDynamite();
+                } else if (isKeyDown && (this.state === STATE.GAMEOVER || this.state === STATE.WIN)) {
+                    if (this.highScorePending) return;
+
+                    if (this.isTesting) {
+                        // Return to editor immediately
+                        this.state = STATE.EDITOR;
+                        document.getElementById('editor-overlay').classList.remove('hidden');
+                        document.getElementById('message-overlay').classList.add('hidden');
+                        this.isTesting = false;
+                        return;
+                    }
+
+                    if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
+                        this.currentLevelIndex = 0;
+                    }
+                    this.resetGame();
+                } else if (isKeyDown && this.state === STATE.MENU) {
+                    if (this.highScorePending) return;
+                    this.initLevel();
+                    this.startGame();
+                }
+            }
+
+            this.keys[e.code] = isKeyDown;
+        } catch (err) {
+            console.error('Input Error:', err);
+        }
+    }
+
     startGame() {
         if (this.state === STATE.PLAYING) return;
 
@@ -1285,155 +1599,7 @@ class Game {
         }
     }
 
-    handleInput(e, isKeyDown) {
-        try {
-            // Editor Input Handling
-            if (this.state === STATE.EDITOR) {
-                this.levelEditor.handleInput(e, isKeyDown);
-                // Allow L key to toggle back to menu even in editor mode
-                if ((e.key === 'l' || e.key === 'L') && isKeyDown) {
-                    this.state = STATE.MENU;
-                    document.getElementById('editor-overlay').classList.add('hidden');
-                    this.updateMenuUI();
-                }
-                return;
-            }
 
-            // ESC - Pause/Unpause
-            if (e.key === 'Escape' && isKeyDown) {
-                if (this.state === STATE.PLAYING) {
-                    this.prevState = STATE.PLAYING;
-                    this.state = STATE.PAUSED;
-                    document.getElementById('pause-overlay').classList.remove('hidden');
-                    return;
-                } else if (this.state === STATE.PAUSED) {
-                    this.state = this.prevState || STATE.PLAYING;
-                    document.getElementById('pause-overlay').classList.add('hidden');
-                    return;
-                }
-            }
-
-            // M - Toggle Sound
-            if ((e.key === 'm' || e.key === 'M') && isKeyDown) {
-                this.sound.enabled = !this.sound.enabled;
-                localStorage.setItem('soundEnabled', this.sound.enabled.toString());
-                this.showMessage(this.sound.enabled ? "SOUND ON" : "SOUND OFF", "");
-                setTimeout(() => {
-                    if (this.state !== STATE.MENU) {
-                        document.getElementById('message-overlay').classList.add('hidden');
-                    }
-                }, 1000);
-                return;
-            }
-
-            // F - Fullscreen Toggle
-            if ((e.key === 'f' || e.key === 'F') && isKeyDown) {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        console.log('Fullscreen error:', err);
-                    });
-                } else {
-                    document.exitFullscreen();
-                }
-                return;
-            }
-
-            // F3 - FPS Counter Toggle
-            if (e.key === 'F3' && isKeyDown) {
-                this.showFPS = !this.showFPS;
-                const fpsCounter = document.getElementById('fps-counter');
-                if (this.showFPS) {
-                    fpsCounter.classList.remove('hidden');
-                } else {
-                    fpsCounter.classList.add('hidden');
-                }
-                return;
-            }
-
-            // L - Toggle Level Editor
-            if ((e.key === 'l' || e.key === 'L') && isKeyDown) {
-                if (this.state === STATE.MENU) {
-                    this.state = STATE.EDITOR;
-                    document.getElementById('menu-screen').classList.add('hidden');
-                    document.getElementById('editor-overlay').classList.remove('hidden');
-                } else if (this.state === STATE.EDITOR) {
-                    this.state = STATE.MENU;
-                    document.getElementById('editor-overlay').classList.add('hidden');
-                    this.updateMenuUI();
-                }
-                return;
-            }
-
-            if (this.state === STATE.NAME_ENTRY) {
-                if (isKeyDown && e.key === 'Enter') {
-                    this.submitHighScore();
-                }
-                return;
-            }
-
-            // Handle restart confirmation
-            if (e.key === 'r' || e.key === 'R') {
-                if (isKeyDown && (this.state === STATE.GAMEOVER || this.state === STATE.WIN || this.state === STATE.PLAYING)) {
-                    if (this.highScorePending) return;
-
-                    if (this.restartConfirmPending) {
-                        // Confirmed! Reset game
-                        document.getElementById('restart-confirm-overlay').classList.add('hidden');
-                        this.restartConfirmPending = false;
-                        this.restartConfirmTimer = 0;
-
-                        // If in test mode, restart the test level
-                        if (this.isTesting) {
-                            this.levelEditor.testPlay();
-                        } else {
-                            // Normal mode: restart current story level
-                            if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
-                                this.currentLevelIndex = 0;
-                            }
-                            this.resetGame();
-                        }
-                    } else {
-                        // First press - show confirmation
-                        this.restartConfirmPending = true;
-                        this.restartConfirmTimer = 3000; // 3s timeout
-                        document.getElementById('restart-confirm-overlay').classList.remove('hidden');
-                    }
-                }
-                return;
-            }
-
-            // Cancel restart confirmation on any other key
-            if (isKeyDown && this.restartConfirmPending) {
-                this.restartConfirmPending = false;
-                this.restartConfirmTimer = 0;
-                document.getElementById('restart-confirm-overlay').classList.add('hidden');
-            }
-
-            // Space/Enter for game start, restart, and dynamite (check both e.code and e.key for compatibility)
-            const isSpace = e.code === 'Space' || e.key === ' ';
-            const isEnter = e.code === 'Enter' || e.key === 'Enter';
-
-            if (isSpace || isEnter) {
-                if (isKeyDown && this.state === STATE.PLAYING && isSpace) {
-                    this.placeDynamite();
-                } else if (isKeyDown && (this.state === STATE.GAMEOVER || this.state === STATE.WIN)) {
-                    if (this.highScorePending) return;
-                    if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
-                        this.currentLevelIndex = 0;
-                    }
-                    this.resetGame();
-                } else if (isKeyDown && this.state === STATE.MENU) {
-                    if (this.highScorePending) return;
-                    this.initLevel();
-                    this.startGame();
-                }
-            }
-
-            this.keys[e.code] = isKeyDown;
-        } catch (err) {
-            console.error('Input Error:', err);
-        }
-    }
 
     updateParticles() {
         for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -1502,6 +1668,16 @@ class Game {
                         this.startGame();
                     } else if (this.state === STATE.GAMEOVER || this.state === STATE.WIN) {
                         if (this.highScorePending) return;
+
+                        if (this.isTesting) {
+                            // Return to editor immediately
+                            this.state = STATE.EDITOR;
+                            document.getElementById('editor-overlay').classList.remove('hidden');
+                            document.getElementById('message-overlay').classList.add('hidden');
+                            this.isTesting = false;
+                            return;
+                        }
+
                         if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
                             this.currentLevelIndex = 0;
                         }
