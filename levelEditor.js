@@ -6,6 +6,7 @@ class LevelEditor {
         this.height = GRID_HEIGHT;
         this.selectedTile = TYPES.DIRT;
         this.selectedEnemyType = ENEMY_TYPES.BASIC;
+        this.enemyTypes = {}; // Store enemy types by coordinate
         this.isDrawing = false;
         this.isErasing = false;
         this.cursorX = -1;
@@ -48,6 +49,7 @@ class LevelEditor {
         this.grid = [];
         this.selectedTile = TYPES.DIRT;
         this.selectedEnemyType = ENEMY_TYPES.BASIC;
+        this.enemyTypes = {};
         this.levelName = "Custom Level";
         this.diamondsNeeded = 10;
         this.timeLimit = 120;
@@ -124,6 +126,11 @@ class LevelEditor {
             const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.SEEKER, ENEMY_TYPES.PATROLLER];
             const currentIndex = types.indexOf(this.selectedEnemyType);
             this.selectedEnemyType = types[(currentIndex + 1) % types.length];
+
+            // Auto-select Enemy tool
+            this.selectedTile = TYPES.ENEMY;
+            this.updatePaletteUI();
+
             this.updateEnemyTypeUI();
             return;
         }
@@ -231,6 +238,11 @@ class LevelEditor {
             const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.SEEKER, ENEMY_TYPES.PATROLLER];
             const idx = types.indexOf(this.selectedEnemyType);
             this.selectedEnemyType = types[(idx + 1) % types.length];
+
+            // Auto-select Enemy tool
+            this.selectedTile = TYPES.ENEMY;
+            this.updatePaletteUI();
+
             this.updateEnemyTypeUI();
         });
     }
@@ -239,8 +251,35 @@ class LevelEditor {
         if (this.game.state !== STATE.EDITOR) return;
 
         const rect = this.game.canvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / TILE_SIZE);
-        const y = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+        const scaleX = this.game.canvas.width / rect.width;
+        const scaleY = this.game.canvas.height / rect.height;
+
+        const x = Math.floor(((e.clientX - rect.left) * scaleX) / TILE_SIZE);
+        const y = Math.floor(((e.clientY - rect.top) * scaleY) / TILE_SIZE);
+
+        this.cursorX = x;
+        this.cursorY = y;
+
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            if (e.button === 0) {
+                this.isDrawing = true;
+                this.placeTile(x, y);
+            } else if (e.button === 2) {
+                this.isErasing = true;
+                this.removeTile(x, y);
+            }
+        }
+    }
+
+    handleMouseMove(e) {
+        if (this.game.state !== STATE.EDITOR) return;
+
+        const rect = this.game.canvas.getBoundingClientRect();
+        const scaleX = this.game.canvas.width / rect.width;
+        const scaleY = this.game.canvas.height / rect.height;
+
+        const x = Math.floor(((e.clientX - rect.left) * scaleX) / TILE_SIZE);
+        const y = Math.floor(((e.clientY - rect.top) * scaleY) / TILE_SIZE);
 
         this.cursorX = x;
         this.cursorY = y;
@@ -255,13 +294,35 @@ class LevelEditor {
     }
 
     placeTile(x, y) {
+        const isBorder = x <= 0 || x >= this.width - 1 || y <= 0 || y >= this.height - 1;
+
+        // Prevent modifying outer walls, UNLESS placing an EXIT
+        if (isBorder && this.selectedTile !== TYPES.EXIT) return;
+
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
             this.grid[y][x] = this.selectedTile;
+            // Store enemy type if placing an enemy
+            if (this.selectedTile === TYPES.ENEMY) {
+                this.enemyTypes[`${x},${y}`] = this.selectedEnemyType;
+            }
         }
     }
 
     removeTile(x, y) {
+        const isBorder = x <= 0 || x >= this.width - 1 || y <= 0 || y >= this.height - 1;
+
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            // Special handling for border: restore to WALL
+            if (isBorder) {
+                if (this.grid[y][x] === TYPES.WALL) return; // Already a wall
+                this.grid[y][x] = TYPES.WALL;
+                return;
+            }
+
+            // Remove enemy type if removing an enemy
+            if (this.grid[y][x] === TYPES.ENEMY) {
+                delete this.enemyTypes[`${x},${y}`];
+            }
             this.grid[y][x] = TYPES.EMPTY;
         }
     }
@@ -465,7 +526,9 @@ class LevelEditor {
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 if (this.grid[y][x] === TYPES.ENEMY) {
-                    this.game.enemies.push(new Enemy(x, y, this.selectedEnemyType));
+                    // Use stored enemy type or default to BASIC
+                    const enemyType = this.enemyTypes[`${x},${y}`] || ENEMY_TYPES.BASIC;
+                    this.game.enemies.push(new Enemy(x, y, enemyType));
                 }
             }
         }
@@ -481,6 +544,7 @@ class LevelEditor {
         const levelData = {
             name: this.levelName,
             grid: this.grid,
+            enemyTypes: this.enemyTypes,
             diamondsNeeded: this.diamondsNeeded,
             timeLimit: this.timeLimit
         };
@@ -516,6 +580,7 @@ class LevelEditor {
         try {
             const levelData = JSON.parse(savedData);
             this.grid = levelData.grid;
+            this.enemyTypes = levelData.enemyTypes || {};
             this.levelName = levelData.name || 'Custom Level';
             this.diamondsNeeded = levelData.diamondsNeeded || 10;
             this.timeLimit = levelData.timeLimit || 120;

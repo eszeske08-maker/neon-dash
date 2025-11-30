@@ -1543,6 +1543,8 @@ class Game {
     startGame() {
         if (this.state === STATE.PLAYING) return;
 
+        const startingFromMenu = (this.state === STATE.MENU);
+
         console.log('Starting Game...');
         this.state = STATE.PLAYING;
 
@@ -1551,6 +1553,14 @@ class Game {
             console.log('Audio unlocked, starting music');
             this.sound.startMusic();
         }).catch(e => console.error('Audio unlock failed:', e));
+
+        // Auto-pause on mobile when starting from menu to allow fullscreen toggle
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (startingFromMenu && isMobile) {
+            this.state = STATE.PAUSED;
+            this.prevState = STATE.PLAYING;
+            document.getElementById('pause-overlay').classList.remove('hidden');
+        }
 
         this.updateUI();
         this.updateMenuUI();
