@@ -638,38 +638,12 @@ canvas {
     text-align: left;
     min-width: 180px;
 }
-/* Landscape / Small Height Responsive Fixes */
-@media (max-height: 600px) {
-    #pause-overlay {
-        padding: 15px 30px;
-        max-height: 95vh;
-        overflow-y: auto;
-    }
 
-    #pause-overlay h1 {
-        font-size: 2rem;
-        margin-bottom: 10px;
-    }
+/* Fade Animations */
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
-    .pause-menu-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    .menu-button {
-        padding: 6px 12px;
-        font-size: 16px;
-        margin: 3px;
-    }
+.fade-out { animation: fadeOut 1s ease-in-out forwards !important; opacity: 1 !important; }
 
-    #message-overlay {
-        padding: 20px 30px;
-        min-width: 300px;
-    }
-
-    #message-overlay h1 {
-        font-size: 2rem;
-        margin-bottom: 10px;
-    }
-}
+.fade-in { animation: fadeIn 1s ease-in-out forwards !important; opacity: 0 !important; }

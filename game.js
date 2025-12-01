@@ -17,7 +17,8 @@ const STATE = {
     TRANSITION: 4,
     NAME_ENTRY: 5,
     PAUSED: 6,
-    EDITOR: 7
+    EDITOR: 7,
+    DEMO: 8
 };
 
 // Entity Types
@@ -51,7 +52,8 @@ const THEMES = [
         dirtColor: '#5d4037',
         dirtDetail: '#3e2723',
         enemySeeker: '#00ff00',
-        enemyPatroller: '#0088ff'
+        enemyPatroller: '#0088ff',
+        playerDetail: '#ffffff'
     },
     { // Theme 1: Neon Pink (Synthwave)
         [TYPES.DIRT]: '#4a148c',
@@ -68,7 +70,8 @@ const THEMES = [
         dirtColor: '#4a148c',
         dirtDetail: '#311b92',
         enemySeeker: '#ffff00',
-        enemyPatroller: '#aa00ff'
+        enemyPatroller: '#aa00ff',
+        playerDetail: '#000000'
     },
     { // Theme 2: Neon Green (Matrix)
         [TYPES.DIRT]: '#1b5e20',
@@ -85,7 +88,8 @@ const THEMES = [
         dirtColor: '#1b5e20',
         dirtDetail: '#003300',
         enemySeeker: '#ff0000',
-        enemyPatroller: '#ff6d00'
+        enemyPatroller: '#ff6d00',
+        playerDetail: '#000000'
     },
     { // Theme 3: Neon Orange (Inferno)
         [TYPES.DIRT]: '#bf360c',
@@ -102,7 +106,80 @@ const THEMES = [
         dirtColor: '#bf360c',
         dirtDetail: '#870000',
         enemySeeker: '#2962ff',
-        enemyPatroller: '#00c853'
+        enemyPatroller: '#00c853',
+        playerDetail: '#ffffff'
+    },
+    { // Theme 4: Ice / Frozen
+        [TYPES.DIRT]: '#455a64', // Blue-grey dirt
+        [TYPES.WALL]: '#37474f', // Dark slate
+        [TYPES.ROCK]: '#b0bec5', // Light blue-grey rock
+        [TYPES.DIAMOND]: '#e0f7fa', // Ice white/cyan
+        [TYPES.PLAYER]: '#00e5ff', // Cyan player
+        [TYPES.ENEMY]: '#ff4081', // Pink enemy (contrast)
+        [TYPES.EXIT]: '#18ffff', // Bright cyan exit
+        [TYPES.DYNAMITE_PICKUP]: '#ff5252',
+        [TYPES.DYNAMITE_ACTIVE]: '#d50000',
+        background: '#000a12', // Very dark blue
+        wallGlow: '#00bcd4', // Cyan glow
+        dirtColor: '#455a64',
+        dirtDetail: '#263238',
+        enemySeeker: '#ff80ab',
+        enemyPatroller: '#80d8ff',
+        playerDetail: '#000000'
+    },
+    { // Theme 5: Gold / Luxury
+        [TYPES.DIRT]: '#3e2723', // Dark brown
+        [TYPES.WALL]: '#4a148c', // Deep purple
+        [TYPES.ROCK]: '#ffd700', // Gold rock
+        [TYPES.DIAMOND]: '#00e676', // Emerald
+        [TYPES.PLAYER]: '#ffffff', // White
+        [TYPES.ENEMY]: '#ff1744', // Ruby
+        [TYPES.EXIT]: '#ffd700', // Gold exit
+        [TYPES.DYNAMITE_PICKUP]: '#ff6d00',
+        [TYPES.DYNAMITE_ACTIVE]: '#dd2c00',
+        background: '#12002b', // Dark purple background
+        wallGlow: '#ffd700', // Gold glow
+        dirtColor: '#3e2723',
+        dirtDetail: '#210e09',
+        enemySeeker: '#d500f9',
+        enemyPatroller: '#ffab00',
+        playerDetail: '#000000'
+    },
+    { // Theme 6: Toxic / Acid
+        [TYPES.DIRT]: '#76ff03', // Lime Green
+        [TYPES.WALL]: '#424242', // Dark Grey
+        [TYPES.ROCK]: '#616161', // Grey
+        [TYPES.DIAMOND]: '#ffff00', // Yellow
+        [TYPES.PLAYER]: '#ff3d00', // Bright Orange
+        [TYPES.ENEMY]: '#d500f9', // Purple
+        [TYPES.EXIT]: '#00e5ff', // Cyan
+        [TYPES.DYNAMITE_PICKUP]: '#ffea00',
+        [TYPES.DYNAMITE_ACTIVE]: '#ff0000',
+        background: '#1a001a', // Dark Purple
+        wallGlow: '#76ff03', // Lime Glow
+        dirtColor: '#76ff03',
+        dirtDetail: '#33691e',
+        enemySeeker: '#ff00ff',
+        enemyPatroller: '#00e5ff',
+        playerDetail: '#ffffff'
+    },
+    { // Theme 7: Vaporwave
+        [TYPES.DIRT]: '#7b1fa2', // Purple
+        [TYPES.WALL]: '#00bcd4', // Cyan
+        [TYPES.ROCK]: '#f06292', // Pink
+        [TYPES.DIAMOND]: '#00e5ff', // Bright Cyan
+        [TYPES.PLAYER]: '#ffff00', // Yellow
+        [TYPES.ENEMY]: '#ff4081', // Hot Pink
+        [TYPES.EXIT]: '#76ff03', // Lime
+        [TYPES.DYNAMITE_PICKUP]: '#ff9100',
+        [TYPES.DYNAMITE_ACTIVE]: '#ff3d00',
+        background: '#1a1a2e', // Dark blue-purple
+        wallGlow: '#ff00ff', // Magenta glow
+        dirtColor: '#7b1fa2',
+        dirtDetail: '#4a148c',
+        enemySeeker: '#00e5ff',
+        enemyPatroller: '#f50057',
+        playerDetail: '#000000'
     }
 ];
 
@@ -421,6 +498,7 @@ class SoundManager {
         this.ctx = null;
         this.enabled = localStorage.getItem('soundEnabled') !== 'false';
         this.musicInterval = null;
+        this.menuMusicInterval = null;
     }
 
     async playTone(freq, type, duration, vol = 1.0) {
@@ -464,6 +542,15 @@ class SoundManager {
     playExplosion() { this.playNoise(0.5, 1.0); }
     playCollect() { this.playTone(1200, 'sine', 0.1, 0.5); }
 
+    // Menu Sounds
+    playMenuHover() { this.playTone(800, 'sine', 0.03, 0.2); }
+    playMenuBlip() { this.playTone(1000, 'square', 0.05, 0.3); }
+    playMenuConfirm() {
+        // Quick two-note confirmation
+        this.playTone(880, 'square', 0.08, 0.4);
+        setTimeout(() => this.playTone(1320, 'square', 0.12, 0.4), 50);
+    }
+
     playWin() {
         // Victory arpeggio
         const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
@@ -504,10 +591,10 @@ class SoundManager {
         }
     }
 
-    startMusic() {
-        console.log('startMusic called', 'Enabled:', this.enabled, 'Interval:', this.musicInterval);
+    startGameMusic() {
+        console.log('startGameMusic called', 'Enabled:', this.enabled, 'Interval:', this.musicInterval);
         if (!this.enabled || this.musicInterval) return;
-        if (this.ctx.state === 'suspended') this.ctx.resume();
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
 
         const bassLine = [110, 110, 220, 110, 130.81, 110, 164.81, 146.83]; // A2, A2, A3, A2, C3, A2, E3, D3
         let noteIndex = 0;
@@ -519,10 +606,44 @@ class SoundManager {
         }, 250);
     }
 
-    stopMusic() {
+    stopGameMusic() {
         if (this.musicInterval) {
             clearInterval(this.musicInterval);
             this.musicInterval = null;
+        }
+    }
+
+    startMenuMusic() {
+        if (!this.enabled || this.menuMusicInterval) return;
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+
+        // Synthwave Bass Sequence (Am - F - C - G)
+        const notes = [110.00, 87.31, 130.81, 98.00]; // Root notes
+        let step = 0;
+
+        this.menuMusicInterval = setInterval(() => {
+            const root = notes[Math.floor(step / 8) % 4];
+
+            // Bass (Sawtooth) - Pumping effect
+            if (step % 2 === 0) {
+                this.playTone(root, 'sawtooth', 0.2, 0.15);
+            } else {
+                this.playTone(root, 'sawtooth', 0.1, 0.1); // Off-beat lighter
+            }
+
+            // Arpeggio (Square) - Cyberpunk feel
+            const arpNotes = [root * 2, root * 3, root * 4, root * 3];
+            const arpNote = arpNotes[step % 4];
+            this.playTone(arpNote, 'square', 0.05, 0.05);
+
+            step++;
+        }, 200); // ~150 BPM (double time feel)
+    }
+
+    stopMenuMusic() {
+        if (this.menuMusicInterval) {
+            clearInterval(this.menuMusicInterval);
+            this.menuMusicInterval = null;
         }
     }
 }
@@ -599,6 +720,14 @@ class Game {
         this.canvas.height = this.height;
 
         this.state = STATE.MENU;
+        this.prevState = STATE.MENU;
+
+        // Demo Mode Properties
+        this.idleTimer = 0;
+        this.demoTimer = 0;
+        this.demoInputTimer = 0;
+        this.demoDuration = 30000; // 30 seconds
+        this.idleThreshold = 10000; // 10 seconds wait time
         this.grid = [];
         this.player = { x: 1, y: 1, dirX: 0, dirY: 0, nextDirX: 0, nextDirY: 0, moveTimer: 0 };
         this.score = 0;
@@ -636,6 +765,20 @@ class Game {
             });
         }
 
+        // Menu Particles (Falling Diamonds/Rocks)
+        this.menuParticles = [];
+        for (let i = 0; i < 30; i++) {
+            this.menuParticles.push({
+                x: Math.random() * this.width,
+                y: Math.random() * this.height,
+                speed: Math.random() * 2 + 1,
+                type: Math.random() < 0.6 ? TYPES.DIAMOND : TYPES.ROCK,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.1,
+                scale: Math.random() * 0.5 + 0.5
+            });
+        }
+
         // Input handling
         this.keys = {};
         this.gamepadInput = null;
@@ -663,14 +806,21 @@ class Game {
             this.sound.enabled = soundEnabled === 'true';
         }
 
+        // Global Audio Unlocker
+        const unlockAudio = () => {
+            if (!this.sound.ctx || this.sound.ctx.state === 'suspended') {
+                this.sound.unlock();
+            }
+        };
+
         window.addEventListener('keydown', (e) => {
             this.handleInput(e, true);
-            if (this.sound.ctx && this.sound.ctx.state === 'suspended') this.sound.ctx.resume();
+            unlockAudio();
         });
         window.addEventListener('keyup', (e) => this.handleInput(e, false));
-        window.addEventListener('click', () => {
-            if (this.sound.ctx && this.sound.ctx.state === 'suspended') this.sound.ctx.resume();
-        });
+        window.addEventListener('click', () => { unlockAudio(); this.resetIdle(); });
+        window.addEventListener('touchstart', () => { unlockAudio(); this.resetIdle(); });
+        window.addEventListener('mousemove', () => this.resetIdle());
 
         // Name Entry UI
         this.nameInput = document.getElementById('player-name-input');
@@ -679,6 +829,7 @@ class Game {
 
         // Pause Menu UI
         document.getElementById('btn-resume').addEventListener('click', () => {
+            this.sound.playMenuConfirm();
             if (this.state === STATE.PAUSED) {
                 this.state = this.prevState || STATE.PLAYING;
                 document.getElementById('pause-overlay').classList.add('hidden');
@@ -686,6 +837,7 @@ class Game {
         });
 
         document.getElementById('btn-restart').addEventListener('click', () => {
+            this.sound.playMenuConfirm();
             if (this.state === STATE.PAUSED) {
                 document.getElementById('pause-overlay').classList.add('hidden');
                 if (this.isTesting) {
@@ -697,6 +849,7 @@ class Game {
         });
 
         document.getElementById('btn-sound').addEventListener('click', () => {
+            this.sound.playMenuBlip();
             this.sound.enabled = !this.sound.enabled;
             localStorage.setItem('soundEnabled', this.sound.enabled.toString());
             document.getElementById('btn-sound').innerText = `SOUND: ${this.sound.enabled ? 'ON' : 'OFF'}`;
@@ -734,11 +887,21 @@ class Game {
         });
 
         document.getElementById('btn-menu').addEventListener('click', () => {
+            this.sound.playMenuConfirm();
             if (this.state === STATE.PAUSED) {
                 this.state = STATE.MENU;
                 document.getElementById('pause-overlay').classList.add('hidden');
-                this.sound.stopMusic();
+                this.sound.stopGameMusic();
+                this.sound.startMenuMusic();
                 this.updateMenuUI();
+            }
+        });
+
+        // Add hover sounds to all pause menu buttons
+        ['btn-resume', 'btn-restart', 'btn-sound', 'btn-fullscreen', 'btn-menu'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.addEventListener('mouseenter', () => this.sound.playMenuHover());
             }
         });
 
@@ -903,6 +1066,24 @@ class Game {
             }
         });
 
+        // Update Menu Particles
+        if (this.state === STATE.MENU) {
+            this.menuParticles.forEach(p => {
+                p.y += p.speed;
+                p.rotation += p.rotSpeed;
+                if (p.y > this.height) {
+                    p.y = -TILE_SIZE;
+                    p.x = Math.random() * this.width;
+                }
+            });
+
+            // Demo Idle Timer
+            this.idleTimer += dt;
+            if (this.idleTimer > this.idleThreshold) {
+                this.startDemo();
+            }
+        }
+
         // Pause Menu Gamepad Input
         if (this.state === STATE.PAUSED) {
             const gamepads = navigator.getGamepads();
@@ -941,7 +1122,8 @@ class Game {
                     this.gamepadActionLocked = true;
                     this.state = STATE.MENU;
                     document.getElementById('pause-overlay').classList.add('hidden');
-                    this.sound.stopMusic();
+                    this.sound.stopGameMusic();
+                    this.sound.startMenuMusic();
                     this.updateMenuUI();
                     anyButtonPressed = true;
                 }
@@ -961,6 +1143,29 @@ class Game {
             return;
         }
 
+        // Demo Mode Logic
+        if (this.state === STATE.DEMO) {
+            this.updateDemoAI(dt);
+
+            this.physicsTimer += dt;
+            if (this.physicsTimer > 120) {
+                this.updatePhysics();
+                this.physicsTimer = 0;
+            }
+            this.updateEnemies(dt);
+
+            this.player.moveTimer += dt;
+            if (this.player.moveTimer > 100) {
+                this.movePlayer();
+                this.player.moveTimer = 0;
+            }
+
+            if (this.state === STATE.GAMEOVER) {
+                this.stopDemo();
+            }
+            return;
+        }
+
         if (this.state === STATE.MENU) {
             // Gamepad support in menu
             const gamepads = navigator.getGamepads();
@@ -970,18 +1175,18 @@ class Game {
                 if (gp.buttons[3].pressed && !this.gamepadActionLocked) {
                     this.gamepadActionLocked = true;
                     this.levelEditor.reset();
+                    this.sound.stopMenuMusic();
                     this.state = STATE.EDITOR;
                     document.getElementById('menu-screen').classList.add('hidden');
                     document.getElementById('editor-overlay').classList.remove('hidden');
+                    this.updateMenuUI();
                     // Lock Y button in editor to prevent immediate test play
                     this.levelEditor.gamepadButtonLocked[3] = true;
                 }
-                // A or Start - Start Game
                 else if ((gp.buttons[0].pressed || gp.buttons[9].pressed) && !this.gamepadActionLocked) {
                     this.gamepadActionLocked = true;
                     if (this.highScorePending) return;
-                    this.initLevel();
-                    this.startGame();
+                    this.fadeToGame();
                 }
                 // Reset lock when no buttons pressed
                 else if (!gp.buttons[0].pressed && !gp.buttons[3].pressed && !gp.buttons[9].pressed) {
@@ -1081,6 +1286,27 @@ class Game {
         this.ctx.fillStyle = this.currentTheme.background;
         this.ctx.fillRect(0, 0, this.width, this.height);
 
+        // Draw Menu Particles
+        if (this.state === STATE.MENU) {
+            this.menuParticles.forEach(p => {
+                this.ctx.save();
+                this.ctx.translate(p.x + TILE_SIZE / 2, p.y + TILE_SIZE / 2);
+                this.ctx.rotate(p.rotation);
+                this.ctx.scale(p.scale, p.scale);
+                this.ctx.translate(-(p.x + TILE_SIZE / 2), -(p.y + TILE_SIZE / 2));
+
+                // Draw slightly faded
+                this.ctx.globalAlpha = 0.6;
+                if (p.type === TYPES.DIAMOND) {
+                    this.drawDiamond(p.x, p.y);
+                } else {
+                    this.drawRock(p.x, p.y);
+                }
+                this.ctx.globalAlpha = 1.0;
+                this.ctx.restore();
+            });
+        }
+
         // Flash Background if Exit just opened
         if (this.flashTimer > 0) {
             this.ctx.fillStyle = '#ffffff';
@@ -1093,6 +1319,8 @@ class Game {
             this.ctx.fillRect(star.x, star.y, star.size, star.size);
         });
         this.ctx.globalAlpha = 1.0;
+
+        if (this.state === STATE.MENU) return;
 
         const shakeX = this.shakeTimer > 0 ? (Math.random() - 0.5) * 10 : 0;
         const shakeY = this.shakeTimer > 0 ? (Math.random() - 0.5) * 10 : 0;
@@ -1129,6 +1357,29 @@ class Game {
         });
 
         this.particles.forEach(p => p.draw(this.ctx));
+
+        // Demo Mode Overlay
+        if (this.state === STATE.DEMO) {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+
+            this.ctx.save();
+            this.ctx.shadowColor = '#00ffff';
+            this.ctx.shadowBlur = 20;
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = '40px Orbitron';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('DEMO MODE', this.width / 2, this.height / 2);
+
+            this.ctx.font = '20px Orbitron';
+            this.ctx.shadowBlur = 0;
+            this.ctx.fillStyle = '#cccccc';
+
+            if (Math.floor(Date.now() / 500) % 2 === 0) {
+                this.ctx.fillText('PRESS ANY KEY', this.width / 2, this.height / 2 + 40);
+            }
+            this.ctx.restore();
+        }
 
         this.ctx.restore();
     }
@@ -1326,8 +1577,7 @@ class Game {
         this.ctx.fillRect(x + 4 - breath, y + 4 - breath, TILE_SIZE - 8 + breath * 2, TILE_SIZE - 8 + breath * 2);
 
         // Eyes - dynamic color based on theme
-        // Use black eyes for Theme 2 (white player), white for others
-        const eyeColor = (this.currentLevelIndex % THEMES.length) === 2 ? '#000' : '#fff';
+        const eyeColor = this.currentTheme.playerDetail || '#ffffff';
         this.ctx.fillStyle = eyeColor;
         this.ctx.shadowBlur = 0;
 
@@ -1378,6 +1628,7 @@ class Game {
 
 
     handleInput(e, isKeyDown) {
+        this.resetIdle();
         try {
             // Editor Input Handling
             if (this.state === STATE.EDITOR) {
@@ -1551,7 +1802,8 @@ class Game {
         // Unlock audio engine and then start music
         this.sound.unlock().then(() => {
             console.log('Audio unlocked, starting music');
-            this.sound.startMusic();
+            this.sound.stopMenuMusic();
+            this.sound.startGameMusic();
         }).catch(e => console.error('Audio unlock failed:', e));
 
         // Auto-pause on mobile when starting from menu to allow fullscreen toggle
@@ -1572,10 +1824,123 @@ class Game {
         }
     }
 
+    fadeToGame() {
+        console.log('fadeToGame called');
+        // Step 1: Fade out menu
+        const menuScreen = document.getElementById('menu-screen');
+        menuScreen.style.opacity = '1'; // Ensure starting opacity
+        menuScreen.classList.add('fade-out');
+        console.log('Added fade-out class');
+
+        setTimeout(() => {
+            // Step 2: Hide menu, show READY message
+            menuScreen.classList.add('hidden');
+            menuScreen.classList.remove('fade-out');
+            menuScreen.style.opacity = ''; // Reset inline style
+            console.log('Menu hidden, showing READY');
+
+            const messageOverlay = document.getElementById('message-overlay');
+            const messageTitle = document.getElementById('message-title');
+            const messageSubtitle = document.getElementById('message-subtitle');
+
+            messageTitle.innerText = 'READY?';
+            messageSubtitle.innerText = 'Get Ready...';
+            messageOverlay.style.opacity = '0'; // Start from transparent
+            messageOverlay.classList.remove('hidden');
+            messageOverlay.classList.add('fade-in');
+
+            setTimeout(() => {
+                // Step 3: Start game
+                messageOverlay.classList.remove('fade-in');
+                messageOverlay.style.opacity = '';
+                messageOverlay.classList.add('hidden'); // Ensure READY is hidden
+                console.log('Starting game');
+
+                this.initLevel();
+                this.startGame();
+            }, 1500); // Show READY for 1.5 seconds
+        }, 1000); // Menu fade out duration (1s)
+    }
+
     resetGame() {
         this.score = 0;
         this.initLevel();
         this.startGame();
+    }
+
+    resetIdle() {
+        this.idleTimer = 0;
+        if (this.state === STATE.DEMO) {
+            this.stopDemo();
+        }
+    }
+
+    startDemo() {
+        if (this.state !== STATE.MENU) return;
+        console.log('Starting Demo Mode');
+        this.state = STATE.DEMO;
+        this.demoTimer = 0;
+        this.demoInputTimer = 0;
+
+        // Use a random Generated Level (5-10) for Demo to rotate themes
+        // Levels 5-10 are at indices 4-9
+        this.currentLevelIndex = 4 + Math.floor(Math.random() * 6);
+        this.initLevel();
+
+        // Hide UI
+        document.getElementById('menu-screen').classList.add('hidden');
+        document.querySelector('.hud-panel').classList.add('hidden');
+    }
+
+    stopDemo() {
+        console.log('Stopping Demo Mode');
+        this.idleTimer = 0; // Reset idle timer to prevent immediate restart
+        this.state = STATE.MENU;
+        this.updateMenuUI();
+        document.getElementById('message-overlay').classList.add('hidden');
+        // Reset to Level 1 for normal play
+        this.currentLevelIndex = 0;
+    }
+
+    updateDemoAI(dt) {
+        this.demoTimer += dt;
+        if (this.demoTimer > this.demoDuration) {
+            this.stopDemo();
+            return;
+        }
+
+        this.demoInputTimer += dt;
+        if (this.demoInputTimer > 400) { // New move every 0.4s (slower)
+            this.demoInputTimer = 0;
+
+            // Simple Random Walk
+            const dirs = [
+                { x: 0, y: -1 }, // Up
+                { x: 0, y: 1 },  // Down
+                { x: -1, y: 0 }, // Left
+                { x: 1, y: 0 }   // Right
+            ];
+
+            // Try to find a valid move (not into wall)
+            let validMoves = [];
+            for (let dir of dirs) {
+                const nextX = this.player.x + dir.x;
+                const nextY = this.player.y + dir.y;
+                if (nextX >= 0 && nextX < GRID_WIDTH && nextY >= 0 && nextY < GRID_HEIGHT) {
+                    const tile = this.grid[nextY][nextX];
+                    // Avoid walls and rocks (unless rock is falling, but simple check is enough)
+                    if (tile !== TYPES.WALL && tile !== TYPES.ROCK) {
+                        validMoves.push(dir);
+                    }
+                }
+            }
+
+            if (validMoves.length > 0) {
+                const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+                this.player.nextDirX = move.x;
+                this.player.nextDirY = move.y;
+            }
+        }
     }
 
     updateMenuUI() {
@@ -1585,6 +1950,7 @@ class Game {
 
         if (this.state === STATE.MENU) {
             menuOverlay.classList.remove('hidden');
+            document.querySelector('.hud-panel').classList.add('hidden');
             document.getElementById('message-overlay').classList.add('hidden');
             document.getElementById('name-entry-overlay').classList.add('hidden');
 
@@ -1604,8 +1970,14 @@ class Game {
 
             highScoreTitle.innerText = `HIGH SCORES (${this.highScorePage + 1}/3)`;
 
+            // Start menu music if not already playing
+            if (!this.sound.menuMusicInterval) {
+                this.sound.startMenuMusic();
+            }
+
         } else {
             menuOverlay.classList.add('hidden');
+            document.querySelector('.hud-panel').classList.remove('hidden');
         }
     }
 
@@ -2068,7 +2440,7 @@ class Game {
         }
 
         this.state = STATE.GAMEOVER;
-        this.sound.stopMusic();
+        this.sound.stopGameMusic();
 
         // Explosion effect
         this.spawnParticles(this.player.x * TILE_SIZE + TILE_SIZE / 2, this.player.y * TILE_SIZE + TILE_SIZE / 2, '#ff00ff', 50);
@@ -2119,7 +2491,7 @@ class Game {
         }
 
         this.state = STATE.TRANSITION;
-        this.sound.stopMusic();
+        this.sound.stopGameMusic();
 
         this.score += Math.floor(this.timeLeft) * 10; // Time bonus
         this.updateUI();
