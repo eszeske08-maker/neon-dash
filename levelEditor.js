@@ -78,7 +78,10 @@ class LevelEditor {
             { type: TYPES.PLAYER, label: 'START', color: this.game.currentTheme[TYPES.PLAYER] },
             { type: TYPES.ENEMY, label: 'ENEMY', color: this.game.currentTheme[TYPES.ENEMY] },
             { type: TYPES.EXIT, label: 'EXIT', color: this.game.currentTheme[TYPES.EXIT] },
-            { type: TYPES.DYNAMITE_PICKUP, label: 'TNT', color: this.game.currentTheme[TYPES.DYNAMITE_PICKUP] }
+            { type: TYPES.DYNAMITE_PICKUP, label: 'TNT', color: this.game.currentTheme[TYPES.DYNAMITE_PICKUP] },
+            { type: TYPES.STEEL, label: 'STEEL', color: '#607d8b' },
+            { type: TYPES.MAGIC_WALL, label: 'MAGIC', color: '#7e57c2' },
+            { type: TYPES.AMOEBA, label: 'AMOEBA', color: '#00e676' }
         ];
 
         tiles.forEach((tile) => {
@@ -97,7 +100,7 @@ class LevelEditor {
 
     updatePaletteUI() {
         const items = document.querySelectorAll('.palette-item');
-        const tileTypes = [TYPES.EMPTY, TYPES.DIRT, TYPES.WALL, TYPES.ROCK, TYPES.DIAMOND, TYPES.PLAYER, TYPES.ENEMY, TYPES.EXIT, TYPES.DYNAMITE_PICKUP];
+        const tileTypes = [TYPES.EMPTY, TYPES.DIRT, TYPES.WALL, TYPES.ROCK, TYPES.DIAMOND, TYPES.PLAYER, TYPES.ENEMY, TYPES.EXIT, TYPES.DYNAMITE_PICKUP, TYPES.STEEL, TYPES.MAGIC_WALL, TYPES.AMOEBA];
         items.forEach((item, index) => {
             if (tileTypes[index] === this.selectedTile) {
                 item.classList.add('selected');
@@ -113,7 +116,8 @@ class LevelEditor {
         const key = e.key;
         const tileMap = {
             '0': TYPES.EMPTY, '1': TYPES.DIRT, '2': TYPES.WALL, '3': TYPES.ROCK,
-            '4': TYPES.DIAMOND, '5': TYPES.PLAYER, '6': TYPES.ENEMY, '7': TYPES.EXIT, '8': TYPES.DYNAMITE_PICKUP
+            '4': TYPES.DIAMOND, '5': TYPES.PLAYER, '6': TYPES.ENEMY, '7': TYPES.EXIT, '8': TYPES.DYNAMITE_PICKUP,
+            '9': TYPES.STEEL, 'm': TYPES.MAGIC_WALL, 'M': TYPES.MAGIC_WALL, 'a': TYPES.AMOEBA, 'A': TYPES.AMOEBA
         };
 
         if (key in tileMap) {
@@ -425,6 +429,36 @@ class LevelEditor {
                 ctx.fillStyle = theme[TYPES.DYNAMITE_PICKUP];
                 ctx.fillRect(cx - 6, cy - 10, 12, 20);
                 break;
+            case TYPES.STEEL:
+                ctx.fillStyle = '#607d8b';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#cfd8dc';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px + TILE_SIZE, py + TILE_SIZE);
+                ctx.moveTo(px + TILE_SIZE, py);
+                ctx.lineTo(px, py + TILE_SIZE);
+                ctx.stroke();
+                break;
+            case TYPES.MAGIC_WALL:
+                ctx.fillStyle = '#7e57c2';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('M', cx, cy);
+                break;
+            case TYPES.AMOEBA:
+                ctx.fillStyle = theme[TYPES.AMOEBA];
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, TILE_SIZE / 3, 0, Math.PI * 2);
+                ctx.fill();
+                break;
         }
     }
 
@@ -534,7 +568,6 @@ class LevelEditor {
         }
 
         document.getElementById('editor-overlay').classList.add('hidden');
-        this.game.state = STATE.PLAYING;
         this.game.isTesting = true;
         this.game.startGame();
         console.log('Test Play started!');

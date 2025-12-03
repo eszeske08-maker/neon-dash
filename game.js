@@ -33,7 +33,10 @@ const TYPES = {
     ENEMY: 6,
     EXIT: 7,
     DYNAMITE_PICKUP: 8,
-    DYNAMITE_ACTIVE: 9
+    DYNAMITE_ACTIVE: 9,
+    STEEL: 10,
+    MAGIC_WALL: 11,
+    AMOEBA: 12
 };
 
 const THEMES = [
@@ -53,7 +56,8 @@ const THEMES = [
         dirtDetail: '#3e2723',
         enemySeeker: '#00ff00',
         enemyPatroller: '#0088ff',
-        playerDetail: '#ffffff'
+        playerDetail: '#ffffff',
+        [TYPES.AMOEBA]: '#00ff00'
     },
     { // Theme 1: Neon Pink (Synthwave)
         [TYPES.DIRT]: '#4a148c',
@@ -71,7 +75,8 @@ const THEMES = [
         dirtDetail: '#311b92',
         enemySeeker: '#ffff00',
         enemyPatroller: '#aa00ff',
-        playerDetail: '#000000'
+        playerDetail: '#000000',
+        [TYPES.AMOEBA]: '#00e676'
     },
     { // Theme 2: Neon Green (Matrix)
         [TYPES.DIRT]: '#1b5e20',
@@ -89,7 +94,8 @@ const THEMES = [
         dirtDetail: '#003300',
         enemySeeker: '#ff0000',
         enemyPatroller: '#ff6d00',
-        playerDetail: '#000000'
+        playerDetail: '#000000',
+        [TYPES.AMOEBA]: '#76ff03'
     },
     { // Theme 3: Neon Orange (Inferno)
         [TYPES.DIRT]: '#bf360c',
@@ -107,7 +113,8 @@ const THEMES = [
         dirtDetail: '#870000',
         enemySeeker: '#2962ff',
         enemyPatroller: '#00c853',
-        playerDetail: '#ffffff'
+        playerDetail: '#ffffff',
+        [TYPES.AMOEBA]: '#ff3d00'
     },
     { // Theme 4: Ice / Frozen
         [TYPES.DIRT]: '#455a64', // Blue-grey dirt
@@ -125,7 +132,8 @@ const THEMES = [
         dirtDetail: '#263238',
         enemySeeker: '#ff80ab',
         enemyPatroller: '#80d8ff',
-        playerDetail: '#000000'
+        playerDetail: '#000000',
+        [TYPES.AMOEBA]: '#00b8d4'
     },
     { // Theme 5: Gold / Luxury
         [TYPES.DIRT]: '#3e2723', // Dark brown
@@ -143,7 +151,8 @@ const THEMES = [
         dirtDetail: '#210e09',
         enemySeeker: '#d500f9',
         enemyPatroller: '#ffab00',
-        playerDetail: '#000000'
+        playerDetail: '#000000',
+        [TYPES.AMOEBA]: '#00c853'
     },
     { // Theme 6: Toxic / Acid
         [TYPES.DIRT]: '#76ff03', // Lime Green
@@ -161,7 +170,8 @@ const THEMES = [
         dirtDetail: '#33691e',
         enemySeeker: '#ff00ff',
         enemyPatroller: '#00e5ff',
-        playerDetail: '#ffffff'
+        playerDetail: '#ffffff',
+        [TYPES.AMOEBA]: '#64dd17'
     },
     { // Theme 7: Vaporwave
         [TYPES.DIRT]: '#7b1fa2', // Purple
@@ -179,7 +189,8 @@ const THEMES = [
         dirtDetail: '#4a148c',
         enemySeeker: '#00e5ff',
         enemyPatroller: '#f50057',
-        playerDetail: '#000000'
+        playerDetail: '#000000',
+        [TYPES.AMOEBA]: '#ffea00'
     }
 ];
 
@@ -469,7 +480,7 @@ class Enemy {
     isValidMove(x, y, game) {
         if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return false;
         const tile = game.grid[y][x];
-        return tile === TYPES.EMPTY || tile === TYPES.PLAYER;
+        return tile === TYPES.EMPTY || tile === TYPES.PLAYER || tile === TYPES.AMOEBA;
     }
 
     performMove(nextX, nextY, game) {
@@ -477,6 +488,13 @@ class Enemy {
 
         if (nextTile === TYPES.PLAYER || (game.player.x === nextX && game.player.y === nextY)) {
             game.die();
+            return;
+        }
+
+        // If moving onto Amoeba, enemy dies
+        if (nextTile === TYPES.AMOEBA) {
+            game.killEnemyAt(this.x, this.y);
+            return;
         }
 
         game.grid[this.y][this.x] = TYPES.EMPTY;
@@ -541,6 +559,7 @@ class SoundManager {
     playStep() { this.playNoise(0.02, 0.2); }
     playExplosion() { this.playNoise(0.5, 1.0); }
     playCollect() { this.playTone(1200, 'sine', 0.1, 0.5); }
+    playAmoeba() { this.playTone(150 + Math.random() * 50, 'triangle', 0.1, 0.2); }
 
     // Menu Sounds
     playMenuHover() { this.playTone(800, 'sine', 0.03, 0.2); }
@@ -728,6 +747,16 @@ class Game {
         this.demoInputTimer = 0;
         this.demoDuration = 30000; // 30 seconds
         this.idleThreshold = 10000; // 10 seconds wait time
+
+        // Magic Wall Properties
+        this.magicWallActive = false;
+        this.magicWallTimer = 0;
+        this.magicWallDuration = 15000;
+
+        this.amoebaTimer = 0;
+        this.amoebaGrowthRate = 20; // Slower growth (was 10)
+        this.amoebaMaxSize = 500; // Larger max size (was 200)
+
         this.grid = [];
         this.player = { x: 1, y: 1, dirX: 0, dirY: 0, nextDirX: 0, nextDirY: 0, moveTimer: 0 };
         this.score = 0;
@@ -1433,6 +1462,50 @@ class Game {
                 this.ctx.fillRect(cx + 10, cy + 6, 12, 20);
                 this.ctx.fillStyle = '#fff';
                 this.ctx.fillRect(cx + 12, cy + 8, 2, 16);
+                break;
+            case TYPES.STEEL:
+                this.drawSteelWall(cx, cy);
+                break;
+            case TYPES.MAGIC_WALL:
+                if (this.magicWallActive) {
+                    // Active Magic Wall Animation
+                    this.ctx.fillStyle = this.currentTheme[TYPES.WALL];
+                    this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+
+                    // Static/Noise effect
+                    this.ctx.fillStyle = Math.random() < 0.5 ? '#ffffff' : this.currentTheme.wallGlow;
+                    for (let i = 0; i < 5; i++) {
+                        const rx = Math.random() * TILE_SIZE;
+                        const ry = Math.random() * TILE_SIZE;
+                        this.ctx.fillRect(cx + rx, cy + ry, 4, 4);
+                    }
+
+                    // Border glow
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(cx, cy, TILE_SIZE, TILE_SIZE);
+                } else {
+                    // Inactive: Looks like normal wall
+                    this.ctx.fillStyle = this.currentTheme[TYPES.WALL];
+                    this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+                    this.ctx.strokeStyle = this.currentTheme.wallGlow;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(cx + 2, cy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    this.ctx.fillStyle = '#424242';
+                    this.ctx.fillRect(cx + 8, cy + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+                }
+                break;
+            case TYPES.AMOEBA:
+                this.ctx.fillStyle = this.currentTheme[TYPES.AMOEBA];
+                this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+
+                // Bubbling effect
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                const time = Date.now() / 200;
+                const size = (Math.sin(time + x * 0.5 + y * 0.5) + 1) * 4 + 2;
+                this.ctx.beginPath();
+                this.ctx.arc(cx + TILE_SIZE / 2, cy + TILE_SIZE / 2, size, 0, Math.PI * 2);
+                this.ctx.fill();
                 break;
         }
     }
@@ -2184,7 +2257,7 @@ class Game {
                     this.sound.playNoise(0.1, 0.5); // Push sound
                 }
             }
-        } else if (nextTile === TYPES.ENEMY) {
+        } else if (nextTile === TYPES.ENEMY || nextTile === TYPES.AMOEBA) {
             this.die();
         }
     }
@@ -2293,6 +2366,96 @@ class Game {
     }
 
     updatePhysics() {
+        // Update Magic Wall Timer
+        if (this.magicWallActive) {
+            this.magicWallTimer -= 120; // Physics update interval
+            if (this.magicWallTimer <= 0) {
+                this.magicWallActive = false;
+                this.magicWallTimer = 0;
+            }
+        }
+
+        // Amoeba Logic
+        this.amoebaTimer++;
+        if (this.amoebaTimer >= this.amoebaGrowthRate) {
+            this.amoebaTimer = 0;
+
+            let amoebaCells = [];
+            let canGrow = false;
+
+            // Find all amoeba cells
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (this.grid[y][x] === TYPES.AMOEBA) {
+                        amoebaCells.push({ x, y });
+
+                        // Check if this cell can grow
+                        const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+                        for (const d of dirs) {
+                            const nx = x + d.x;
+                            const ny = y + d.y;
+                            if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
+                                if (this.grid[ny][nx] === TYPES.EMPTY || this.grid[ny][nx] === TYPES.DIRT || this.grid[ny][nx] === TYPES.ENEMY) {
+                                    canGrow = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Transformation Logic
+            if (amoebaCells.length > this.amoebaMaxSize) {
+                // Too big -> Turn to Rocks
+                amoebaCells.forEach(cell => {
+                    this.grid[cell.y][cell.x] = TYPES.ROCK;
+                });
+                this.sound.playExplosion();
+            } else if (amoebaCells.length > 0 && !canGrow) {
+                // Enclosed -> Turn to Diamonds
+                amoebaCells.forEach(cell => {
+                    this.grid[cell.y][cell.x] = TYPES.DIAMOND;
+                });
+                this.sound.playWin();
+            } else {
+                // Grow Randomly
+                const growthAttempts = Math.max(1, Math.floor(amoebaCells.length / 20)) + 1;
+                let amoebaGrew = false;
+
+                for (let i = 0; i < growthAttempts; i++) {
+                    if (amoebaCells.length === 0) break;
+                    const idx = Math.floor(Math.random() * amoebaCells.length);
+                    const cell = amoebaCells[idx];
+
+                    const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+                    const validDirs = dirs.filter(d => {
+                        const nx = cell.x + d.x;
+                        const ny = cell.y + d.y;
+                        return nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT &&
+                            (this.grid[ny][nx] === TYPES.EMPTY || this.grid[ny][nx] === TYPES.DIRT || this.grid[ny][nx] === TYPES.ENEMY);
+                    });
+
+                    if (validDirs.length > 0) {
+                        const d = validDirs[Math.floor(Math.random() * validDirs.length)];
+                        const targetX = cell.x + d.x;
+                        const targetY = cell.y + d.y;
+
+                        // Check for enemy at target and kill it
+                        if (this.grid[targetY][targetX] === TYPES.ENEMY) {
+                            this.killEnemyAt(targetX, targetY);
+                        }
+
+                        this.grid[targetY][targetX] = TYPES.AMOEBA;
+                        amoebaGrew = true;
+                    }
+                }
+
+                if (amoebaGrew) {
+                    this.sound.playAmoeba();
+                }
+            }
+        }
+
         // Process rocks falling
         // We iterate from bottom to top to handle stacking correctly
         // We use a temporary set for this frame to avoid double updating
@@ -2307,7 +2470,29 @@ class Game {
                     const type = this.grid[y][x];
 
                     // Check below
-                    if (this.grid[y + 1][x] === TYPES.EMPTY) {
+                    const below = this.grid[y + 1][x];
+
+                    // Magic Wall Interaction
+                    if (below === TYPES.MAGIC_WALL && this.fallingEntities.has(`${x},${y}`)) {
+                        if (!this.magicWallActive) {
+                            this.magicWallActive = true;
+                            this.magicWallTimer = this.magicWallDuration;
+                            this.sound.playTone(440, 'square', 0.1);
+                        }
+
+                        // Check if space below magic wall is empty (y+2)
+                        if (this.magicWallActive && y + 2 < GRID_HEIGHT && this.grid[y + 2][x] === TYPES.EMPTY) {
+                            this.grid[y][x] = TYPES.EMPTY;
+                            const newType = (type === TYPES.ROCK) ? TYPES.DIAMOND : TYPES.ROCK;
+                            this.grid[y + 2][x] = newType;
+                            processed.add(`${x},${y + 2}`);
+                            this.fallingEntities.add(`${x},${y + 2}`);
+                            this.sound.playTone(newType === TYPES.DIAMOND ? 880 : 220, 'sine', 0.1);
+                            continue;
+                        }
+                    }
+
+                    if (below === TYPES.EMPTY) {
                         // Fall down
                         this.grid[y][x] = TYPES.EMPTY;
                         this.grid[y + 1][x] = type;
@@ -2385,7 +2570,7 @@ class Game {
                             this.shakeTimer = 200;
                             this.sound.playExplosion();
                         }
-                    } else if (this.grid[y + 1][x] === TYPES.ROCK || this.grid[y + 1][x] === TYPES.DIAMOND || this.grid[y + 1][x] === TYPES.WALL) {
+                    } else if (this.grid[y + 1][x] === TYPES.WALL || this.grid[y + 1][x] === TYPES.ROCK || this.grid[y + 1][x] === TYPES.DIAMOND || this.grid[y + 1][x] === TYPES.STEEL || this.grid[y + 1][x] === TYPES.MAGIC_WALL) {
                         // Roll off rounded objects
                         if (this.grid[y][x - 1] === TYPES.EMPTY && this.grid[y + 1][x - 1] === TYPES.EMPTY) {
                             // Roll Left
@@ -2418,26 +2603,61 @@ class Game {
         }
     }
 
-
     spawnParticles(x, y, color, count) {
         for (let i = 0; i < count; i++) {
             this.particles.push(new Particle(x, y, color, 2, 30));
         }
     }
 
+    killEnemyAt(x, y) {
+        const enemyIndex = this.enemies.findIndex(e => e.x === x && e.y === y);
+        if (enemyIndex === -1) return;
+
+        const enemy = this.enemies[enemyIndex];
+        this.enemies.splice(enemyIndex, 1);
+        this.score += 50;
+        this.spawnParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, '#ff0000', 20);
+
+        this.grid[y][x] = TYPES.EMPTY;
+
+        if (enemy.type === ENEMY_TYPES.BASIC) {
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+
+                    if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
+                        if (this.grid[ny][nx] === TYPES.EMPTY || (nx === x && ny === y)) {
+                            this.grid[ny][nx] = TYPES.DIAMOND;
+                            this.spawnParticles(nx * TILE_SIZE + TILE_SIZE / 2, ny * TILE_SIZE + TILE_SIZE / 2, '#00ffff', 5);
+                        }
+                    }
+                }
+            }
+        } else {
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+
+                    if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
+                        const tile = this.grid[ny][nx];
+
+                        if (tile === TYPES.DIRT || tile === TYPES.ROCK || tile === TYPES.DIAMOND || tile === TYPES.WALL) {
+                            this.grid[ny][nx] = TYPES.EMPTY;
+                            this.spawnParticles(nx * TILE_SIZE + TILE_SIZE / 2, ny * TILE_SIZE + TILE_SIZE / 2, '#ff4400', 10);
+                        }
+                    }
+                }
+            }
+        }
+
+        this.shakeTimer = 200;
+        this.sound.playExplosion();
+    }
+
     die() {
         if (this.state === STATE.GAMEOVER) return;
-
-        if (this.isTesting) {
-            this.showMessage("TEST FAILED", "Returning to Editor...");
-            setTimeout(() => {
-                this.state = STATE.EDITOR;
-                document.getElementById('editor-overlay').classList.remove('hidden');
-                document.getElementById('message-overlay').classList.add('hidden');
-                this.isTesting = false;
-            }, 2000);
-            return;
-        }
 
         this.state = STATE.GAMEOVER;
         this.sound.stopGameMusic();
@@ -2459,7 +2679,18 @@ class Game {
 
         this.shakeTimer = 500;
         this.sound.playExplosion();
-        this.vibrate(500, 1.0, 1.0); // Strong vibration
+        this.vibrate(500, 1.0, 1.0);
+
+        if (this.isTesting) {
+            this.showMessage("TEST FAILED", "Returning to Editor...");
+            setTimeout(() => {
+                this.state = STATE.EDITOR;
+                document.getElementById('editor-overlay').classList.remove('hidden');
+                document.getElementById('message-overlay').classList.add('hidden');
+                this.isTesting = false;
+            }, 2000);
+            return;
+        }
 
         if (this.highScores.isHighScore(this.score)) {
             this.highScorePending = true;
