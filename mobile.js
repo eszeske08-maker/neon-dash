@@ -7,33 +7,7 @@
         function vib(p) { if (navigator.vibrate) navigator.vibrate(p); }
 
         // START
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.addEventListener('mouseenter', () => game.sound.playMenuHover());
-            startBtn.addEventListener('click', () => {
-                game.sound.playMenuConfirm();
-                if (game.state === 0 && !game.highScorePending) {
-                    game.fadeToGame();
-                }
-            });
-        }
 
-        // LEVEL EDITOR
-        const editorBtn = document.getElementById('editor-btn');
-        if (editorBtn) {
-            editorBtn.addEventListener('mouseenter', () => game.sound.playMenuHover());
-            editorBtn.addEventListener('click', () => {
-                game.sound.playMenuConfirm();
-                if (game.state === 0) { // STATE.MENU
-                    game.levelEditor.reset();
-                    game.sound.stopMenuMusic();
-                    game.state = 7; // STATE.EDITOR
-                    document.getElementById('menu-screen').classList.add('hidden');
-                    document.getElementById('editor-overlay').classList.remove('hidden');
-                    game.updateMenuUI();
-                }
-            });
-        }
 
         // D-pad
         const keyMap = { 'up': 'ArrowUp', 'down': 'ArrowDown', 'left': 'ArrowLeft', 'right': 'ArrowRight' };
@@ -110,8 +84,9 @@
                 if (game.state === 2 || game.state === 3) {
                     if (!game.highScorePending) {
                         if (game.state === 3 && game.currentLevelIndex >= 10) game.currentLevelIndex = 0;
-                        game.resetGame();
+                        document.getElementById('message-overlay').classList.add('hidden');
                         rb.classList.add('hidden');
+                        game.resetGame();
                     }
                 }
             };

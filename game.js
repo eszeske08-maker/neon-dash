@@ -21,6 +21,13 @@ const STATE = {
     DEMO: 8
 };
 
+const GAME_MODES = {
+    CAMPAIGN: 'campaign',
+    ENDLESS: 'endless',
+    HARDCORE: 'hardcore',
+    CUSTOM: 'custom'
+};
+
 // Entity Types
 // Entity Types
 const TYPES = {
@@ -851,10 +858,7 @@ class Game {
         window.addEventListener('touchstart', () => { unlockAudio(); this.resetIdle(); });
         window.addEventListener('mousemove', () => this.resetIdle());
 
-        // Name Entry UI
-        this.nameInput = document.getElementById('player-name-input');
-        this.submitBtn = document.getElementById('submit-score-btn');
-        this.submitBtn.addEventListener('click', () => this.submitHighScore());
+
 
         // Pause Menu UI
         document.getElementById('btn-resume').addEventListener('click', () => {
@@ -934,13 +938,84 @@ class Game {
             }
         });
 
+        // New Main Menu Buttons
+        const bindBtn = (id, mode) => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                console.log(`Binding click event to ${id}`);
+                btn.addEventListener('click', (e) => {
+                    console.log(`Button clicked: ${id}`);
+                    e.stopPropagation(); // Prevent bubbling issues
+                    this.startGame(mode);
+                });
+                btn.addEventListener('mouseenter', () => this.sound.playMenuHover());
+            } else {
+                console.error(`Button element not found: ${id}`);
+            }
+        };
+
+        bindBtn('btn-campaign', GAME_MODES.CAMPAIGN);
+        bindBtn('btn-endless', GAME_MODES.ENDLESS);
+        bindBtn('btn-hardcore', GAME_MODES.HARDCORE);
+
+        const loadBtn = document.getElementById('btn-load-level');
+        if (loadBtn) {
+            loadBtn.addEventListener('click', () => {
+                this.sound.playMenuConfirm();
+                document.getElementById('load-level-modal').classList.remove('hidden');
+            });
+            loadBtn.addEventListener('mouseenter', () => this.sound.playMenuHover());
+        }
+
+        const editorBtn = document.getElementById('btn-editor');
+        if (editorBtn) {
+            editorBtn.addEventListener('click', () => {
+                this.sound.playMenuConfirm();
+                this.levelEditor.reset();
+                this.sound.stopMenuMusic();
+                this.state = STATE.EDITOR;
+                document.getElementById('menu-screen').classList.add('hidden');
+                document.getElementById('editor-overlay').classList.remove('hidden');
+                this.updateMenuUI();
+            });
+            editorBtn.addEventListener('mouseenter', () => this.sound.playMenuHover());
+        }
+
+        // Load Level Modal Buttons
+        document.getElementById('btn-load-confirm').addEventListener('click', () => {
+            const url = document.getElementById('level-url-input').value;
+            this.loadLevelFromUrl(url);
+        });
+
+        document.getElementById('btn-load-cancel').addEventListener('click', () => {
+            this.sound.playMenuBlip();
+            document.getElementById('load-level-modal').classList.add('hidden');
+        });
+
         this.updateMenuUI();
         this.loop = this.loop.bind(this);
         requestAnimationFrame(this.loop);
     }
 
     initLevel() {
-        const levelDef = LEVELS[this.currentLevelIndex] || LEVELS[LEVELS.length - 1];
+        let levelDef;
+        if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelData) {
+            levelDef = this.customLevelData;
+        } else if (this.gameMode === GAME_MODES.ENDLESS || this.gameMode === GAME_MODES.HARDCORE) {
+            // Generate procedural level with increasing difficulty
+            const difficulty = this.currentLevelIndex;
+            levelDef = {
+                type: 'procedural',
+                diamondsNeeded: Math.min(10 + difficulty, 30),
+                time: Math.max(150 - difficulty * 5, 60),
+                rockChance: Math.min(0.15 + difficulty * 0.01, 0.35),
+                wallChance: Math.min(0.05 + difficulty * 0.005, 0.15),
+                enemyChance: Math.min(0.02 + difficulty * 0.005, 0.1)
+            };
+        } else {
+            levelDef = LEVELS[this.currentLevelIndex] || LEVELS[LEVELS.length - 1];
+        }
+
         this.diamondsNeeded = levelDef.diamondsNeeded;
         this.timeLeft = levelDef.time;
         this.diamondsCollected = 0;
@@ -1813,6 +1888,7 @@ class Game {
                     if (this.highScorePending) return;
 
                     document.getElementById('pause-overlay').classList.add('hidden');
+                    document.getElementById('message-overlay').classList.add('hidden');
 
                     // If in test mode, restart the test level
                     if (this.isTesting) {
@@ -1850,6 +1926,7 @@ class Game {
                     if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
                         this.currentLevelIndex = 0;
                     }
+                    document.getElementById('message-overlay').classList.add('hidden');
                     this.resetGame();
                 } else if (isKeyDown && this.state === STATE.MENU) {
                     if (this.highScorePending) return;
@@ -1864,12 +1941,25 @@ class Game {
         }
     }
 
-    startGame() {
+    startGame(mode = GAME_MODES.CAMPAIGN) {
         if (this.state === STATE.PLAYING) return;
 
         const startingFromMenu = (this.state === STATE.MENU);
+        if (startingFromMenu) {
+            this.gameMode = mode;
+            if (mode === GAME_MODES.CAMPAIGN) {
+                this.currentLevelIndex = 0;
+                this.score = 0;
+                this.initLevel();
+            } else if (mode === GAME_MODES.ENDLESS || mode === GAME_MODES.HARDCORE) {
+                this.currentLevelIndex = 0; // Start from level 1 (0-indexed)
+                this.score = 0;
+                this.initLevel();
+            }
+            // CUSTOM mode init is handled by loadLevelFromUrl
+        }
 
-        console.log('Starting Game...');
+        console.log('Starting Game...', this.gameMode);
         this.state = STATE.PLAYING;
 
         // Unlock audio engine and then start music
@@ -1894,6 +1984,29 @@ class Game {
         // Ensure game loop is running
         if (!this.animationFrameId) {
             this.loop(0);
+        }
+    }
+
+    async loadLevelFromUrl(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const levelData = await response.json();
+
+            if (!levelData.grid || !levelData.width || !levelData.height) {
+                throw new Error('Invalid level format: missing grid, width, or height');
+            }
+
+            this.sound.playMenuConfirm();
+            document.getElementById('load-level-modal').classList.add('hidden');
+
+            this.customLevelData = levelData;
+            this.startGame(GAME_MODES.CUSTOM);
+
+        } catch (e) {
+            console.error(e);
+            alert('Failed to load level: ' + e.message);
+            this.sound.playMenuBlip();
         }
     }
 
@@ -1938,7 +2051,9 @@ class Game {
     resetGame() {
         this.score = 0;
         this.initLevel();
-        this.startGame();
+        this.state = STATE.PLAYING;
+        this.sound.stopGameMusic();
+        this.sound.startGameMusic();
     }
 
     resetIdle() {
@@ -2018,30 +2133,11 @@ class Game {
 
     updateMenuUI() {
         const menuOverlay = document.getElementById('menu-screen');
-        const highScoreList = document.getElementById('high-score-list');
-        const highScoreTitle = document.getElementById('high-score-title');
 
         if (this.state === STATE.MENU) {
             menuOverlay.classList.remove('hidden');
             document.querySelector('.hud-panel').classList.add('hidden');
             document.getElementById('message-overlay').classList.add('hidden');
-            document.getElementById('name-entry-overlay').classList.add('hidden');
-
-            // Update High Scores
-            const scores = this.highScores.getScores();
-            const startIdx = this.highScorePage * 5;
-            const pageScores = scores.slice(startIdx, startIdx + 5);
-
-            highScoreList.innerHTML = pageScores.map((s, i) =>
-                `<li><span>${startIdx + i + 1}. ${s.name}</span> <span>Lvl ${s.level}</span> <span>${s.score.toString().padStart(5, '0')}</span></li>`
-            ).join('');
-
-            // Fill empty slots if less than 5
-            for (let i = pageScores.length; i < 5; i++) {
-                highScoreList.innerHTML += `<li><span>${startIdx + i + 1}. ---</span> <span>---</span> <span>-----</span></li>`;
-            }
-
-            highScoreTitle.innerText = `HIGH SCORES (${this.highScorePage + 1}/3)`;
 
             // Start menu music if not already playing
             if (!this.sound.menuMusicInterval) {
@@ -2136,6 +2232,7 @@ class Game {
                         if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
                             this.currentLevelIndex = 0;
                         }
+                        document.getElementById('message-overlay').classList.add('hidden');
                         this.resetGame();
                     }
                 }
@@ -2692,18 +2789,18 @@ class Game {
             return;
         }
 
-        if (this.highScores.isHighScore(this.score)) {
-            this.highScorePending = true;
-            this.showMessage("NEW HIGH SCORE!", "Enter your name...");
+        if (this.gameMode === GAME_MODES.HARDCORE) {
+            this.showMessage("GAME OVER", "Hardcore Mode: Returning to Menu...");
             setTimeout(() => {
-                this.state = STATE.NAME_ENTRY;
-                this.nameInput.value = 'UNK';
-                document.getElementById('name-entry-overlay').classList.remove('hidden');
-                document.getElementById('submit-score-btn').focus();
-            }, 2000);
-        } else {
-            this.showMessage("GAME OVER", "Press R to Restart Level");
+                this.state = STATE.MENU;
+                this.sound.stopGameMusic();
+                document.getElementById('message-overlay').classList.add('hidden');
+                this.updateMenuUI();
+            }, 3000);
+            return;
         }
+
+        this.showMessage("GAME OVER", "Press R to Restart Level");
     }
 
     winGame() {
@@ -2740,18 +2837,11 @@ class Game {
             this.state = STATE.WIN;
             this.sound.playWin();
 
-            if (this.highScores.isHighScore(this.score)) {
-                this.highScorePending = true;
-                this.showMessage("VICTORY!", "NEW HIGH SCORE!");
-                setTimeout(() => {
-                    this.state = STATE.NAME_ENTRY;
-                    this.nameInput.value = 'UNK';
-                    document.getElementById('name-entry-overlay').classList.remove('hidden');
-                    document.getElementById('submit-score-btn').focus();
-                }, 3000);
-            } else {
-                this.showMessage("VICTORY!", `Final Score: ${this.score}`);
-            }
+            this.showMessage("VICTORY!", `Final Score: ${this.score}`);
+            setTimeout(() => {
+                this.state = STATE.MENU;
+                this.updateMenuUI();
+            }, 5000);
         }
     }
 

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Neon Dash</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=101">
     <link rel="stylesheet" href="mobile.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
@@ -26,22 +26,27 @@
 
             <div id="menu-screen">
                 <h1 class="game-title">NEON DASH</h1>
-                <div id="high-score-container">
-                    <h2 id="high-score-title">HIGH SCORES</h2>
-                    <ul id="high-score-list">
-                        <!-- Scores injected by JS -->
-                    </ul>
+                <div class="menu-buttons-container">
+                    <button id="btn-campaign" class="menu-button primary">🚀 CAMPAIGN</button>
+                    <button id="btn-endless" class="menu-button">♾️ ENDLESS</button>
+                    <button id="btn-hardcore" class="menu-button danger">💀 HARDCORE</button>
+                    <button id="btn-rogue" class="menu-button special" disabled>💎 ROGUE MINER (WIP)</button>
+                    <button id="btn-load-level" class="menu-button">🌐 LOAD LEVEL</button>
+                    <button id="btn-editor" class="menu-button">🛠️ LEVEL EDITOR</button>
                 </div>
-                <button id="start-btn" class="menu-button">START GAME</button>
-                <button id="editor-btn" class="menu-button mobile-only">LEVEL EDITOR</button>
-                <p class="menu-hint">SPACE - Start | L - Level Editor</p>
+                <p class="menu-hint">Select a Game Mode to Start</p>
             </div>
 
-            <div id="name-entry-overlay" class="hidden">
-                <h2>NEW HIGH SCORE!</h2>
-                <p>ENTER YOUR NAME</p>
-                <input type="text" id="player-name-input" maxlength="3" placeholder="AAA">
-                <button id="submit-score-btn">SUBMIT</button>
+            <div id="load-level-modal" class="hidden">
+                <div class="modal-content">
+                    <h2>LOAD LEVEL FROM URL</h2>
+                    <p>Paste a raw JSON URL (e.g. GitHub Gist, Pastebin raw)</p>
+                    <input type="text" id="level-url-input" placeholder="https://example.com/level.json">
+                    <div class="modal-buttons">
+                        <button id="btn-load-confirm" class="menu-button">LOAD</button>
+                        <button id="btn-load-cancel" class="menu-button">CANCEL</button>
+                    </div>
+                </div>
             </div>
 
             <div id="message-overlay" class="hidden">
@@ -96,9 +101,9 @@
         </div>
     </div>
 
-    <script src="levelEditor.js?v=99"></script>
-    <script src="game.js?v=99"></script>
-    <script src="mobile.js?v=99"></script>
+    <script src="levelEditor.js?v=104"></script>
+    <script src="game.js?v=104"></script>
+    <script src="mobile.js?v=104"></script>
 </body>
 
 </html>
