@@ -83,10 +83,17 @@
             const restart = () => {
                 if (game.state === 2 || game.state === 3) {
                     if (!game.highScorePending) {
-                        if (game.state === 3 && game.currentLevelIndex >= 10) game.currentLevelIndex = 0;
                         document.getElementById('message-overlay').classList.add('hidden');
                         rb.classList.add('hidden');
-                        game.resetGame();
+
+                        if (game.state === 2) {
+                            // GAMEOVER: restart current level only
+                            game.restartCurrentLevel();
+                        } else if (game.state === 3) {
+                            // WIN: restart from beginning
+                            if (game.currentLevelIndex >= 10) game.currentLevelIndex = 0;
+                            game.resetGame();
+                        }
                     }
                 }
             };

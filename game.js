@@ -18,7 +18,9 @@ const STATE = {
     NAME_ENTRY: 5,
     PAUSED: 6,
     EDITOR: 7,
-    DEMO: 8
+    DEMO: 8,
+    LOAD_MODAL: 9,
+    LEVEL_SELECT: 10
 };
 
 const GAME_MODES = {
@@ -790,6 +792,19 @@ class Game {
         this.currentTheme = THEMES[0];
         this.highScorePending = false;
 
+        // Menu Navigation
+        this.menuSelectedIndex = 0;
+        this.menuButtons = ['btn-campaign', 'btn-endless', 'btn-hardcore', 'btn-load-level', 'btn-editor'];
+        this.menuNavLocked = false;
+
+        // Pause Menu Navigation
+        this.pauseSelectedIndex = 0;
+        this.pauseButtons = ['btn-resume', 'btn-restart', 'btn-sound', 'btn-fullscreen', 'btn-menu'];
+
+        // Load Modal Navigation
+        this.loadModalSelectedIndex = 0;
+        this.loadModalButtons = ['btn-load-confirm', 'btn-load-cancel'];
+
         // Background Stars
         this.stars = [];
         for (let i = 0; i < 100; i++) {
@@ -803,15 +818,15 @@ class Game {
 
         // Menu Particles (Falling Diamonds/Rocks)
         this.menuParticles = [];
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 60; i++) {
             this.menuParticles.push({
                 x: Math.random() * this.width,
                 y: Math.random() * this.height,
-                speed: Math.random() * 2 + 1,
+                speed: Math.random() * 3 + 2,
                 type: Math.random() < 0.6 ? TYPES.DIAMOND : TYPES.ROCK,
                 rotation: Math.random() * Math.PI * 2,
-                rotSpeed: (Math.random() - 0.5) * 0.1,
-                scale: Math.random() * 0.5 + 0.5
+                rotSpeed: (Math.random() - 0.5) * 0.15,
+                scale: Math.random() * 0.7 + 0.8
             });
         }
 
@@ -962,7 +977,11 @@ class Game {
         if (loadBtn) {
             loadBtn.addEventListener('click', () => {
                 this.sound.playMenuConfirm();
+                this.state = STATE.LOAD_MODAL;
+                this.loadModalSelectedIndex = 0;
                 document.getElementById('load-level-modal').classList.remove('hidden');
+                this.updateLoadModalSelection();
+                document.getElementById('level-url-input').focus();
             });
             loadBtn.addEventListener('mouseenter', () => this.sound.playMenuHover());
         }
@@ -981,15 +1000,50 @@ class Game {
             editorBtn.addEventListener('mouseenter', () => this.sound.playMenuHover());
         }
 
+        // Editor Export Buttons
+        document.getElementById('btn-copy-level').addEventListener('click', () => {
+            this.levelEditor.copyToClipboard();
+        });
+        document.getElementById('btn-download-level').addEventListener('click', () => {
+            this.levelEditor.downloadJSON();
+        });
+
         // Load Level Modal Buttons
+        const fileInput = document.getElementById('level-file-input');
+        const fileNameDisplay = document.getElementById('file-name-display');
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                fileNameDisplay.textContent = file.name;
+                // Clear URL input when file is selected
+                document.getElementById('level-url-input').value = '';
+            }
+        });
+
         document.getElementById('btn-load-confirm').addEventListener('click', () => {
-            const url = document.getElementById('level-url-input').value;
-            this.loadLevelFromUrl(url);
+            const file = fileInput.files[0];
+            const url = document.getElementById('level-url-input').value.trim();
+
+            if (file) {
+                // Load from local file
+                this.loadLevelFromFile(file);
+            } else if (url) {
+                // Load from URL
+                this.loadLevelFromUrl(url);
+            } else {
+                alert('Please enter a URL or choose a file');
+            }
         });
 
         document.getElementById('btn-load-cancel').addEventListener('click', () => {
             this.sound.playMenuBlip();
+            this.state = STATE.MENU;
             document.getElementById('load-level-modal').classList.add('hidden');
+            // Reset file input
+            fileInput.value = '';
+            fileNameDisplay.textContent = '';
         });
 
         this.updateMenuUI();
@@ -1028,8 +1082,13 @@ class Game {
         this.shakeTimer = 0;
         this.flashTimer = 0;
 
-        // Select Theme
-        const themeIndex = this.currentLevelIndex % THEMES.length;
+        // Select Theme (use customLevelIndex for custom mode)
+        let themeIndex;
+        if (this.gameMode === GAME_MODES.CUSTOM) {
+            themeIndex = this.customLevelIndex % THEMES.length;
+        } else {
+            themeIndex = this.currentLevelIndex % THEMES.length;
+        }
         this.currentTheme = THEMES[themeIndex];
         COLORS = this.currentTheme;
 
@@ -1047,9 +1106,10 @@ class Game {
             this.grid.push(row);
         }
 
-        if (levelDef.type === 'fixed') {
-            // Load fixed map
-            for (let y = 0; y < GRID_HEIGHT; y++) {
+        // Load fixed or custom map (if map array of strings exists)
+        if (levelDef.map && Array.isArray(levelDef.map) && typeof levelDef.map[0] === 'string') {
+            // Load map from string array
+            for (let y = 0; y < GRID_HEIGHT && y < levelDef.map.length; y++) {
                 const mapRow = levelDef.map[y] || "";
                 for (let x = 0; x < GRID_WIDTH; x++) {
                     const char = mapRow[x] || " ";
@@ -1067,9 +1127,40 @@ class Game {
                         this.grid[y][x] = TYPES.EMPTY;
                         this.enemies.push(new Enemy(x, y, ENEMY_TYPES.BASIC));
                     }
+                    else if (char === 'P') {
+                        this.grid[y][x] = TYPES.EMPTY;
+                        this.enemies.push(new Enemy(x, y, ENEMY_TYPES.PATROLLER));
+                    }
+                    else if (char === 'K') {
+                        this.grid[y][x] = TYPES.EMPTY;
+                        this.enemies.push(new Enemy(x, y, ENEMY_TYPES.SEEKER));
+                    }
+                    else if (char === 'T') this.grid[y][x] = TYPES.DYNAMITE_PICKUP;
+                    else if (char === 'W') this.grid[y][x] = TYPES.STEEL;
+                    else if (char === 'M') this.grid[y][x] = TYPES.MAGIC_WALL;
+                    else if (char === 'A') this.grid[y][x] = TYPES.AMOEBA;
                 }
             }
-            // Add some dynamite randomly
+        } else if (levelDef.grid && Array.isArray(levelDef.grid)) {
+            // Load from numeric grid format (level editor format)
+            for (let y = 0; y < levelDef.grid.length && y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < levelDef.grid[y].length && x < GRID_WIDTH; x++) {
+                    const tile = levelDef.grid[y][x];
+                    this.grid[y][x] = tile;
+                    if (tile === TYPES.PLAYER) {
+                        this.player.x = x;
+                        this.player.y = y;
+                        this.grid[y][x] = TYPES.EMPTY;
+                    } else if (tile === TYPES.ENEMY) {
+                        this.enemies.push(new Enemy(x, y, ENEMY_TYPES.BASIC));
+                        this.grid[y][x] = TYPES.EMPTY;
+                    }
+                }
+            }
+        }
+
+        if (levelDef.type === 'procedural' || levelDef.type === 'generated') {
+            // Add some dynamite randomly for procedural levels
             for (let i = 0; i < 3; i++) {
                 let dx, dy;
                 do {
@@ -1079,7 +1170,6 @@ class Game {
                 this.grid[dy][dx] = TYPES.DYNAMITE_PICKUP;
             }
 
-        } else {
             // Procedural Generation
             this.player.x = 1;
             this.player.y = 1;
@@ -1112,22 +1202,29 @@ class Game {
             }
         }
 
-        // Clear safe zone around player
+        // Clear safe zone around player (only for procedural modes)
         this.grid[this.player.y][this.player.x] = TYPES.PLAYER;
-        this.grid[this.player.y + 1][this.player.x] = TYPES.EMPTY;
-        this.grid[this.player.y][this.player.x + 1] = TYPES.EMPTY;
+        if (this.gameMode === GAME_MODES.ENDLESS || this.gameMode === GAME_MODES.HARDCORE) {
+            // Only clear space around player in procedural modes
+            if (this.player.y + 1 < GRID_HEIGHT) {
+                this.grid[this.player.y + 1][this.player.x] = TYPES.EMPTY;
+            }
+            if (this.player.x + 1 < GRID_WIDTH) {
+                this.grid[this.player.y][this.player.x + 1] = TYPES.EMPTY;
+            }
 
-        // Clear space around enemies
-        this.enemies.forEach(e => {
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    if (this.grid[e.y + dy] && this.grid[e.y + dy][e.x + dx] === TYPES.DIRT) {
-                        this.grid[e.y + dy][e.x + dx] = TYPES.EMPTY;
+            // Clear space around enemies (only for procedural modes)
+            this.enemies.forEach(e => {
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (this.grid[e.y + dy] && this.grid[e.y + dy][e.x + dx] === TYPES.DIRT) {
+                            this.grid[e.y + dy][e.x + dx] = TYPES.EMPTY;
+                        }
                     }
                 }
-            }
-            this.grid[e.y][e.x] = TYPES.ENEMY;
-        });
+                this.grid[e.y][e.x] = TYPES.ENEMY;
+            });
+        }
     }
 
     update(dt) {
@@ -1193,48 +1290,133 @@ class Game {
             const gamepads = navigator.getGamepads();
             const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
             if (gp) {
-                let anyButtonPressed = false;
+                // D-pad navigation
+                const upPressed = (gp.buttons[12] && gp.buttons[12].pressed) || (gp.axes && gp.axes[1] < -0.5);
+                const downPressed = (gp.buttons[13] && gp.buttons[13].pressed) || (gp.axes && gp.axes[1] > 0.5);
 
-                // Resume (A or B button only, not Start)
-                if ((gp.buttons[0].pressed || gp.buttons[1].pressed) && !this.gamepadActionLocked) {
+                if (upPressed && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    this.pauseSelectedIndex = (this.pauseSelectedIndex - 1 + this.pauseButtons.length) % this.pauseButtons.length;
+                    this.updatePauseSelection();
+                    this.sound.playMenuBlip();
+                } else if (downPressed && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    this.pauseSelectedIndex = (this.pauseSelectedIndex + 1) % this.pauseButtons.length;
+                    this.updatePauseSelection();
+                    this.sound.playMenuBlip();
+                } else if (!upPressed && !downPressed) {
+                    this.menuNavLocked = false;
+                }
+
+                // A button - activate selected
+                if (gp.buttons[0].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    const selectedBtnId = this.pauseButtons[this.pauseSelectedIndex];
+
+                    // Special handling for fullscreen - needs direct API call
+                    if (selectedBtnId === 'btn-fullscreen') {
+                        this.toggleFullscreen();
+                    } else {
+                        const selectedBtn = document.getElementById(selectedBtnId);
+                        if (selectedBtn) {
+                            selectedBtn.click();
+                        }
+                    }
+                }
+                // B button - Resume (quick shortcut)
+                else if (gp.buttons[1].pressed && !this.gamepadActionLocked) {
                     this.gamepadActionLocked = true;
                     this.state = this.prevState || STATE.PLAYING;
                     document.getElementById('pause-overlay').classList.add('hidden');
-                    anyButtonPressed = true;
                 }
-                // Y - Restart
-                else if (gp.buttons[3].pressed && !this.gamepadActionLocked) {
-                    this.gamepadActionLocked = true;
-                    document.getElementById('pause-overlay').classList.add('hidden');
-                    if (this.isTesting) {
-                        this.levelEditor.testPlay();
-                    } else {
-                        this.resetGame();
-                    }
-                    anyButtonPressed = true;
+                // Reset lock when no buttons pressed
+                else if (!gp.buttons[0].pressed && !gp.buttons[1].pressed) {
+                    this.gamepadActionLocked = false;
                 }
-                // X - Sound Toggle
-                else if (gp.buttons[2].pressed && !this.gamepadActionLocked) {
-                    this.gamepadActionLocked = true;
-                    this.sound.enabled = !this.sound.enabled;
-                    localStorage.setItem('soundEnabled', this.sound.enabled.toString());
-                    document.getElementById('btn-sound').innerText = `SOUND: ${this.sound.enabled ? 'ON' : 'OFF'}`;
-                    anyButtonPressed = true;
-                }
-                // Select/Back - Menu
-                else if (gp.buttons[8].pressed && !this.gamepadActionLocked) {
-                    this.gamepadActionLocked = true;
-                    this.state = STATE.MENU;
-                    document.getElementById('pause-overlay').classList.add('hidden');
-                    this.sound.stopGameMusic();
-                    this.sound.startMenuMusic();
-                    this.updateMenuUI();
-                    anyButtonPressed = true;
+            }
+            return;
+        }
+
+        // Load Modal Gamepad Input
+        if (this.state === STATE.LOAD_MODAL) {
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+            if (gp) {
+                // D-pad left/right navigation
+                const leftPressed = (gp.buttons[14] && gp.buttons[14].pressed) || (gp.axes && gp.axes[0] < -0.5);
+                const rightPressed = (gp.buttons[15] && gp.buttons[15].pressed) || (gp.axes && gp.axes[0] > 0.5);
+
+                if ((leftPressed || rightPressed) && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    this.loadModalSelectedIndex = (this.loadModalSelectedIndex + 1) % this.loadModalButtons.length;
+                    this.updateLoadModalSelection();
+                    this.sound.playMenuBlip();
+                } else if (!leftPressed && !rightPressed) {
+                    this.menuNavLocked = false;
                 }
 
+                // A button - activate selected
+                if (gp.buttons[0].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    const selectedBtn = document.getElementById(this.loadModalButtons[this.loadModalSelectedIndex]);
+                    if (selectedBtn) selectedBtn.click();
+                }
+                // B button - Cancel
+                else if (gp.buttons[1].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    this.sound.playMenuBlip();
+                    this.state = STATE.MENU;
+                    document.getElementById('load-level-modal').classList.add('hidden');
+                }
                 // Reset lock when no buttons pressed
-                if (!gp.buttons[0].pressed && !gp.buttons[1].pressed && !gp.buttons[2].pressed &&
-                    !gp.buttons[3].pressed && !gp.buttons[8].pressed) {
+                else if (!gp.buttons[0].pressed && !gp.buttons[1].pressed) {
+                    this.gamepadActionLocked = false;
+                }
+            }
+            return;
+        }
+
+        // Level Selector Gamepad Input
+        if (this.state === STATE.LEVEL_SELECT) {
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+            if (gp) {
+                // D-pad up/down navigation
+                const upPressed = (gp.buttons[12] && gp.buttons[12].pressed) || (gp.axes && gp.axes[1] < -0.5);
+                const downPressed = (gp.buttons[13] && gp.buttons[13].pressed) || (gp.axes && gp.axes[1] > 0.5);
+
+                if (upPressed && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    if (this.levelSelectorIndex > 0) {
+                        this.levelSelectorIndex--;
+                        this.updateLevelSelectorSelection();
+                        this.sound.playMenuBlip();
+                    }
+                } else if (downPressed && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    if (this.levelSelectorIndex < this.customLevelPack.length - 1) {
+                        this.levelSelectorIndex++;
+                        this.updateLevelSelectorSelection();
+                        this.sound.playMenuBlip();
+                    }
+                } else if (!upPressed && !downPressed) {
+                    this.menuNavLocked = false;
+                }
+
+                // A button - Start selected level
+                if (gp.buttons[0].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    this.sound.playMenuConfirm();
+                    this.startSelectedLevel();
+                }
+                // B button - Back to menu
+                else if (gp.buttons[1].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    this.sound.playMenuBlip();
+                    this.closeLevelSelector();
+                }
+                // Reset lock when no buttons pressed
+                else if (!gp.buttons[0].pressed && !gp.buttons[1].pressed) {
                     this.gamepadActionLocked = false;
                 }
             }
@@ -1249,6 +1431,18 @@ class Game {
 
         // Demo Mode Logic
         if (this.state === STATE.DEMO) {
+            // Check for gamepad button press to exit demo
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+            if (gp) {
+                for (let i = 0; i < gp.buttons.length; i++) {
+                    if (gp.buttons[i] && gp.buttons[i].pressed) {
+                        this.stopDemo();
+                        return;
+                    }
+                }
+            }
+
             this.updateDemoAI(dt);
 
             this.physicsTimer += dt;
@@ -1275,8 +1469,38 @@ class Game {
             const gamepads = navigator.getGamepads();
             const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
             if (gp) {
-                // Y - Level Editor (check FIRST to avoid conflict)
-                if (gp.buttons[3].pressed && !this.gamepadActionLocked) {
+                // D-pad navigation
+                const upPressed = (gp.buttons[12] && gp.buttons[12].pressed) || (gp.axes && gp.axes[1] < -0.5);
+                const downPressed = (gp.buttons[13] && gp.buttons[13].pressed) || (gp.axes && gp.axes[1] > 0.5);
+
+                if (upPressed && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    this.menuSelectedIndex = (this.menuSelectedIndex - 1 + this.menuButtons.length) % this.menuButtons.length;
+                    this.updateMenuSelection();
+                    this.sound.playMenuBlip();
+                    this.resetIdle();
+                } else if (downPressed && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    this.menuSelectedIndex = (this.menuSelectedIndex + 1) % this.menuButtons.length;
+                    this.updateMenuSelection();
+                    this.sound.playMenuBlip();
+                    this.resetIdle();
+                } else if (!upPressed && !downPressed) {
+                    this.menuNavLocked = false;
+                }
+
+                // A button - activate selected
+                if (gp.buttons[0].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    console.log('A pressed, menuSelectedIndex:', this.menuSelectedIndex, 'button:', this.menuButtons[this.menuSelectedIndex]);
+                    const selectedBtn = document.getElementById(this.menuButtons[this.menuSelectedIndex]);
+                    if (selectedBtn && !selectedBtn.disabled) {
+                        console.log('Clicking button:', selectedBtn.id);
+                        selectedBtn.click();
+                    }
+                }
+                // Y - Level Editor (direct shortcut)
+                else if (gp.buttons[3].pressed && !this.gamepadActionLocked) {
                     this.gamepadActionLocked = true;
                     this.levelEditor.reset();
                     this.sound.stopMenuMusic();
@@ -1284,16 +1508,10 @@ class Game {
                     document.getElementById('menu-screen').classList.add('hidden');
                     document.getElementById('editor-overlay').classList.remove('hidden');
                     this.updateMenuUI();
-                    // Lock Y button in editor to prevent immediate test play
                     this.levelEditor.gamepadButtonLocked[3] = true;
                 }
-                else if ((gp.buttons[0].pressed || gp.buttons[9].pressed) && !this.gamepadActionLocked) {
-                    this.gamepadActionLocked = true;
-                    if (this.highScorePending) return;
-                    this.fadeToGame();
-                }
                 // Reset lock when no buttons pressed
-                else if (!gp.buttons[0].pressed && !gp.buttons[3].pressed && !gp.buttons[9].pressed) {
+                else if (!gp.buttons[0].pressed && !gp.buttons[3].pressed) {
                     this.gamepadActionLocked = false;
                 }
             }
@@ -1323,7 +1541,9 @@ class Game {
             this.gamepadActionLocked = true; // Prevent immediate resume
             this.prevState = STATE.PLAYING;
             this.state = STATE.PAUSED;
+            this.pauseSelectedIndex = 0; // Reset to first button
             document.getElementById('pause-overlay').classList.remove('hidden');
+            this.updatePauseSelection();
         }
         if (gp && !gp.buttons[9].pressed) {
             this.gamepadPauseLocked = false;
@@ -1400,7 +1620,7 @@ class Game {
                 this.ctx.translate(-(p.x + TILE_SIZE / 2), -(p.y + TILE_SIZE / 2));
 
                 // Draw slightly faded
-                this.ctx.globalAlpha = 0.6;
+                this.ctx.globalAlpha = 0.55;
                 if (p.type === TYPES.DIAMOND) {
                     this.drawDiamond(p.x, p.y);
                 } else {
@@ -1790,12 +2010,69 @@ class Game {
                 return;
             }
 
+            // Load Modal keyboard handling
+            if (this.state === STATE.LOAD_MODAL && isKeyDown) {
+                if (e.key === 'Escape') {
+                    this.sound.playMenuBlip();
+                    this.state = STATE.MENU;
+                    document.getElementById('load-level-modal').classList.add('hidden');
+                    return;
+                }
+                if (e.key === 'Enter') {
+                    const selectedBtn = document.getElementById(this.loadModalButtons[this.loadModalSelectedIndex]);
+                    if (selectedBtn) selectedBtn.click();
+                    return;
+                }
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Tab') {
+                    e.preventDefault();
+                    this.loadModalSelectedIndex = (this.loadModalSelectedIndex + 1) % this.loadModalButtons.length;
+                    this.updateLoadModalSelection();
+                    this.sound.playMenuBlip();
+                    return;
+                }
+            }
+
+            // Level Selector keyboard handling
+            if (this.state === STATE.LEVEL_SELECT && isKeyDown) {
+                if (e.key === 'Escape') {
+                    this.sound.playMenuBlip();
+                    this.closeLevelSelector();
+                    return;
+                }
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.sound.playMenuConfirm();
+                    this.startSelectedLevel();
+                    return;
+                }
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                    e.preventDefault();
+                    if (this.levelSelectorIndex > 0) {
+                        this.levelSelectorIndex--;
+                        this.updateLevelSelectorSelection();
+                        this.sound.playMenuBlip();
+                    }
+                    return;
+                }
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+                    e.preventDefault();
+                    if (this.levelSelectorIndex < this.customLevelPack.length - 1) {
+                        this.levelSelectorIndex++;
+                        this.updateLevelSelectorSelection();
+                        this.sound.playMenuBlip();
+                    }
+                    return;
+                }
+            }
+
             // ESC - Pause/Unpause
             if (e.key === 'Escape' && isKeyDown) {
                 if (this.state === STATE.PLAYING) {
                     this.prevState = STATE.PLAYING;
                     this.state = STATE.PAUSED;
+                    this.pauseSelectedIndex = 0;
                     document.getElementById('pause-overlay').classList.remove('hidden');
+                    this.updatePauseSelection();
                     return;
                 } else if (this.state === STATE.PAUSED) {
                     this.state = this.prevState || STATE.PLAYING;
@@ -1893,12 +2170,18 @@ class Game {
                     // If in test mode, restart the test level
                     if (this.isTesting) {
                         this.levelEditor.testPlay();
-                    } else {
-                        // Normal mode: restart current story level
-                        if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
+                    } else if (this.state === STATE.GAMEOVER) {
+                        // Game over: restart current level only (keep pack progress)
+                        this.restartCurrentLevel();
+                    } else if (this.state === STATE.WIN) {
+                        // Win/completed: restart from beginning
+                        if (this.currentLevelIndex >= LEVELS.length) {
                             this.currentLevelIndex = 0;
                         }
                         this.resetGame();
+                    } else {
+                        // Playing/Paused: restart current level
+                        this.restartCurrentLevel();
                     }
                 }
                 return;
@@ -1911,11 +2194,10 @@ class Game {
             if (isSpace || isEnter) {
                 if (isKeyDown && this.state === STATE.PLAYING && isSpace) {
                     this.placeDynamite();
-                } else if (isKeyDown && (this.state === STATE.GAMEOVER || this.state === STATE.WIN)) {
+                } else if (isKeyDown && this.state === STATE.GAMEOVER) {
                     if (this.highScorePending) return;
 
                     if (this.isTesting) {
-                        // Return to editor immediately
                         this.state = STATE.EDITOR;
                         document.getElementById('editor-overlay').classList.remove('hidden');
                         document.getElementById('message-overlay').classList.add('hidden');
@@ -1923,10 +2205,25 @@ class Game {
                         return;
                     }
 
-                    if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
+                    document.getElementById('message-overlay').classList.add('hidden');
+                    // GAMEOVER: restart current level only (keep pack progress)
+                    this.restartCurrentLevel();
+                } else if (isKeyDown && this.state === STATE.WIN) {
+                    if (this.highScorePending) return;
+
+                    if (this.isTesting) {
+                        this.state = STATE.EDITOR;
+                        document.getElementById('editor-overlay').classList.remove('hidden');
+                        document.getElementById('message-overlay').classList.add('hidden');
+                        this.isTesting = false;
+                        return;
+                    }
+
+                    if (this.currentLevelIndex >= LEVELS.length) {
                         this.currentLevelIndex = 0;
                     }
                     document.getElementById('message-overlay').classList.add('hidden');
+                    // WIN: restart from beginning
                     this.resetGame();
                 } else if (isKeyDown && this.state === STATE.MENU) {
                     if (this.highScorePending) return;
@@ -1955,8 +2252,11 @@ class Game {
                 this.currentLevelIndex = 0; // Start from level 1 (0-indexed)
                 this.score = 0;
                 this.initLevel();
+            } else if (mode === GAME_MODES.CUSTOM) {
+                // Custom level pack
+                this.score = 0;
+                this.initLevel();
             }
-            // CUSTOM mode init is handled by loadLevelFromUrl
         }
 
         console.log('Starting Game...', this.gameMode);
@@ -1969,17 +2269,24 @@ class Game {
             this.sound.startGameMusic();
         }).catch(e => console.error('Audio unlock failed:', e));
 
-        // Auto-pause on mobile when starting from menu to allow fullscreen toggle
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (startingFromMenu && isMobile) {
-            this.state = STATE.PAUSED;
-            this.prevState = STATE.PLAYING;
-            document.getElementById('pause-overlay').classList.remove('hidden');
+        // Show level intro for custom levels with title/description
+        if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelData) {
+            if (this.customLevelData.title || this.customLevelData.description) {
+                const title = this.customLevelData.title || "CUSTOM LEVEL";
+                const desc = this.customLevelData.description || "";
+                this.showMessage(title, desc);
+                setTimeout(() => {
+                    document.getElementById('message-overlay').classList.add('hidden');
+                }, 2500);
+            } else {
+                document.getElementById('message-overlay').classList.add('hidden');
+            }
+        } else {
+            document.getElementById('message-overlay').classList.add('hidden');
         }
 
         this.updateUI();
         this.updateMenuUI();
-        document.getElementById('message-overlay').classList.add('hidden');
 
         // Ensure game loop is running
         if (!this.animationFrameId) {
@@ -1987,27 +2294,387 @@ class Game {
         }
     }
 
-    async loadLevelFromUrl(url) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Network response was not ok');
-            const levelData = await response.json();
+    loadLevelFromFile(file) {
+        const reader = new FileReader();
 
-            if (!levelData.grid || !levelData.width || !levelData.height) {
-                throw new Error('Invalid level format: missing grid, width, or height');
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                this.processLevelData(data);
+            } catch (err) {
+                console.error('Failed to parse file:', err);
+                alert('Failed to load level: Invalid JSON file');
+                this.sound.playMenuBlip();
+            }
+        };
+
+        reader.onerror = () => {
+            alert('Failed to read file');
+            this.sound.playMenuBlip();
+        };
+
+        reader.readAsText(file);
+    }
+
+    processLevelData(data) {
+        try {
+            let packName = 'Level Pack';
+            let packDescription = null;
+            let packDetails = null;
+
+            // Check if it's a level pack (array of levels) or single level
+            if (Array.isArray(data)) {
+                // Level pack - array of levels
+                if (data.length === 0) {
+                    throw new Error('Level pack is empty');
+                }
+
+                // Validate all levels in the pack
+                for (let i = 0; i < data.length; i++) {
+                    const level = data[i];
+                    if (!level.grid && !level.map) {
+                        throw new Error(`Level ${i + 1} is missing grid/map data`);
+                    }
+                }
+
+                console.log(`Loaded level pack with ${data.length} levels`);
+                this.customLevelPack = data;
+                packName = `${data.length} Levels`;
+
+            } else if (data.levels && Array.isArray(data.levels)) {
+                // Level pack with metadata wrapper: { name: "...", levels: [...] }
+                if (data.levels.length === 0) {
+                    throw new Error('Level pack is empty');
+                }
+
+                console.log(`Loaded level pack "${data.name || 'Unnamed'}" with ${data.levels.length} levels`);
+                this.customLevelPack = data.levels;
+                packName = data.name || `${data.levels.length} Levels`;
+                packDescription = data.description || null;
+                packDetails = {
+                    author: data.author || null,
+                    website: data.website || data.url || null,
+                    version: data.version || null,
+                    date: data.date || null
+                };
+
+            } else {
+                // Single level
+                if (!data.grid && !data.map) {
+                    throw new Error('Invalid level format: missing grid or map data');
+                }
+
+                console.log('Loaded single custom level');
+                this.customLevelPack = [data];
+                packName = data.name || data.title || 'Single Level';
+                packDescription = data.description || null;
             }
 
+            // Show level selector instead of starting game directly
             this.sound.playMenuConfirm();
             document.getElementById('load-level-modal').classList.add('hidden');
-
-            this.customLevelData = levelData;
-            this.startGame(GAME_MODES.CUSTOM);
+            this.resetFileInput();
+            this.showLevelSelector(packName, packDescription, packDetails);
 
         } catch (e) {
             console.error(e);
             alert('Failed to load level: ' + e.message);
             this.sound.playMenuBlip();
         }
+    }
+    resetFileInput() {
+        const fileInput = document.getElementById('level-file-input');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        if (fileInput) fileInput.value = '';
+        if (fileNameDisplay) fileNameDisplay.textContent = '';
+        document.getElementById('level-url-input').value = '';
+    }
+
+    // Level Selector Functions
+    showLevelSelector(packName, packDescription = null, packDetails = null) {
+        this.state = STATE.LEVEL_SELECT;
+        this.levelSelectorIndex = 0;
+        this.currentPackDetails = packDetails;
+
+        const modal = document.getElementById('level-selector-modal');
+        const levelList = document.getElementById('level-list');
+        const packInfo = document.getElementById('level-pack-info');
+
+        // Build pack info with optional description and info button
+        let packInfoHTML = `<span class="pack-name">${packName}</span>`;
+
+        // Add info button if there are details
+        if (packDetails && (packDetails.author || packDetails.website || packDetails.version)) {
+            packInfoHTML += ` <button class="pack-info-btn" id="btn-pack-info" title="Pack Info">ℹ️</button>`;
+        }
+
+        packInfo.innerHTML = packInfoHTML;
+
+        // Add description if available
+        let descElement = document.getElementById('level-pack-desc');
+        if (!descElement) {
+            descElement = document.createElement('p');
+            descElement.id = 'level-pack-desc';
+            descElement.className = 'pack-description';
+            packInfo.parentNode.insertBefore(descElement, levelList);
+        }
+
+        if (packDescription) {
+            descElement.textContent = packDescription;
+            descElement.classList.remove('hidden');
+        } else {
+            descElement.textContent = '';
+            descElement.classList.add('hidden');
+        }
+
+        // Bind info button if exists
+        const infoBtn = document.getElementById('btn-pack-info');
+        if (infoBtn) {
+            infoBtn.onclick = () => this.showPackDetails();
+        }
+
+        levelList.innerHTML = '';
+
+        // Create level items
+        this.customLevelPack.forEach((level, index) => {
+            const item = document.createElement('div');
+            item.className = 'level-item' + (index === 0 ? ' selected' : '');
+            item.dataset.index = index;
+
+            // Level number
+            const number = document.createElement('span');
+            number.className = 'level-number';
+            number.textContent = (index + 1).toString().padStart(2, '0');
+
+            // Preview canvas
+            const preview = document.createElement('canvas');
+            preview.className = 'level-preview';
+            preview.width = 80;
+            preview.height = 40;
+            this.renderLevelPreview(level, preview);
+
+            // Level info
+            const info = document.createElement('div');
+            info.className = 'level-info';
+
+            const title = document.createElement('span');
+            title.className = 'level-title';
+            title.textContent = level.title || level.name || `Level ${index + 1}`;
+
+            const meta = document.createElement('span');
+            meta.className = 'level-meta';
+            const diamonds = level.diamondsNeeded || level.diamonds || '?';
+            const time = level.time || level.timeLimit || '?';
+            meta.innerHTML = `💎 ${diamonds} &nbsp; ⏱️ ${time}s`;
+
+            info.appendChild(title);
+            info.appendChild(meta);
+
+            item.appendChild(number);
+            item.appendChild(preview);
+            item.appendChild(info);
+
+            item.addEventListener('click', () => {
+                this.levelSelectorIndex = index;
+                this.updateLevelSelectorSelection();
+                this.startSelectedLevel();
+            });
+
+            item.addEventListener('mouseenter', () => {
+                this.levelSelectorIndex = index;
+                this.updateLevelSelectorSelection();
+                this.sound.playMenuHover();
+            });
+
+            levelList.appendChild(item);
+        });
+
+        modal.classList.remove('hidden');
+
+        // Bind buttons
+        document.getElementById('btn-level-start').onclick = () => this.startSelectedLevel();
+        document.getElementById('btn-level-back').onclick = () => this.closeLevelSelector();
+    }
+
+    renderLevelPreview(levelData, canvas) {
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, width, height);
+
+        let gridData = null;
+        let gridWidth = GRID_WIDTH;
+        let gridHeight = GRID_HEIGHT;
+
+        if (levelData.map) {
+            gridHeight = levelData.map.length;
+            gridWidth = levelData.map[0] ? levelData.map[0].length : GRID_WIDTH;
+        } else if (levelData.grid) {
+            gridHeight = levelData.grid.length;
+            gridWidth = levelData.grid[0] ? levelData.grid[0].length : GRID_WIDTH;
+        }
+
+        const tileW = width / gridWidth;
+        const tileH = height / gridHeight;
+
+        const charToColor = {
+            '#': '#555', 'W': '#555',
+            '.': '#4a3527', 'D': '#00ffff',
+            'O': '#8b7355', 'R': '#8b7355',
+            'S': '#ff00ff', 'P': '#ff00ff',
+            'X': '#00ff00', 'E': '#ff0000',
+            ' ': '#111', 'T': '#ff4444'
+        };
+
+        const typeToColor = {
+            [TYPES.WALL]: '#555',
+            [TYPES.DIRT]: '#4a3527',
+            [TYPES.DIAMOND]: '#00ffff',
+            [TYPES.ROCK]: '#8b7355',
+            [TYPES.PLAYER]: '#ff00ff',
+            [TYPES.EXIT]: '#00ff00',
+            [TYPES.ENEMY]: '#ff0000',
+            [TYPES.EMPTY]: '#111',
+            [TYPES.DYNAMITE_PICKUP]: '#ff4444',
+            [TYPES.STEEL]: '#888',
+            [TYPES.MAGIC_WALL]: '#9900ff',
+            [TYPES.AMOEBA]: '#00ff00'
+        };
+
+        if (levelData.map) {
+            levelData.map.forEach((row, y) => {
+                for (let x = 0; x < row.length; x++) {
+                    const char = row[x];
+                    ctx.fillStyle = charToColor[char] || '#222';
+                    ctx.fillRect(x * tileW, y * tileH, tileW + 0.5, tileH + 0.5);
+                }
+            });
+        } else if (levelData.grid) {
+            levelData.grid.forEach((row, y) => {
+                row.forEach((tile, x) => {
+                    ctx.fillStyle = typeToColor[tile] || '#222';
+                    ctx.fillRect(x * tileW, y * tileH, tileW + 0.5, tileH + 0.5);
+                });
+            });
+        }
+    }
+
+    updateLevelSelectorSelection() {
+        const items = document.querySelectorAll('.level-item');
+        items.forEach((item, index) => {
+            item.classList.toggle('selected', index === this.levelSelectorIndex);
+        });
+
+        // Scroll selected into view
+        const selected = items[this.levelSelectorIndex];
+        if (selected) {
+            selected.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }
+
+    startSelectedLevel() {
+        this.customLevelIndex = this.levelSelectorIndex;
+        this.customLevelData = this.prepareCustomLevel(this.customLevelPack[this.levelSelectorIndex]);
+
+        this.closeLevelSelector();
+        this.state = STATE.MENU;
+        this.startGame(GAME_MODES.CUSTOM);
+    }
+
+    closeLevelSelector() {
+        document.getElementById('level-selector-modal').classList.add('hidden');
+        // Remove description element if exists
+        const descEl = document.getElementById('level-pack-desc');
+        if (descEl) descEl.remove();
+        this.state = STATE.MENU;
+        this.updateMenuUI();
+    }
+
+    showPackDetails() {
+        if (!this.currentPackDetails) return;
+
+        const details = this.currentPackDetails;
+        let message = '';
+
+        if (details.author) message += `👤 Author: ${details.author}\n`;
+        if (details.website) message += `🌐 Website: ${details.website}\n`;
+        if (details.version) message += `📦 Version: ${details.version}\n`;
+        if (details.date) message += `📅 Date: ${details.date}\n`;
+
+        if (message) {
+            alert(message.trim());
+        }
+    }
+
+    async loadLevelFromUrl(url) {
+        try {
+            let response;
+            let data;
+
+            // Try direct fetch first
+            try {
+                response = await fetch(url);
+                if (!response.ok) throw new Error('Direct fetch failed');
+                data = await response.json();
+            } catch (directError) {
+                console.log('Direct fetch failed, trying CORS proxies...');
+
+                // Try multiple CORS proxies
+                const corsProxies = [
+                    'https://api.allorigins.win/raw?url=',
+                    'https://corsproxy.io/?',
+                    'https://cors-anywhere.herokuapp.com/'
+                ];
+
+                let proxySuccess = false;
+                for (const proxy of corsProxies) {
+                    try {
+                        response = await fetch(proxy + encodeURIComponent(url));
+                        if (response.ok) {
+                            data = await response.json();
+                            proxySuccess = true;
+                            console.log('Loaded via proxy:', proxy);
+                            break;
+                        }
+                    } catch (proxyError) {
+                        console.log('Proxy failed:', proxy);
+                    }
+                }
+
+                if (!proxySuccess) {
+                    throw new Error('Failed to load - CORS blocked. Try hosting the JSON on the same server or use a raw GitHub/Gist URL.');
+                }
+            }
+
+            // Use shared processing method
+            this.processLevelData(data);
+
+        } catch (e) {
+            console.error(e);
+            alert('Failed to load level: ' + e.message);
+            this.sound.playMenuBlip();
+        }
+    }
+
+    prepareCustomLevel(levelData) {
+        // Normalize level data format
+        const prepared = { ...levelData };
+
+        // If using 'map' format (string array), keep it as is
+        // If using 'grid' format (2D number array), keep it as is
+
+        // Set defaults
+        prepared.diamondsNeeded = levelData.diamondsNeeded || levelData.diamonds || 10;
+        prepared.time = levelData.time || levelData.timeLimit || 120;
+        prepared.type = 'custom';
+
+        // Optional metadata
+        prepared.title = levelData.title || levelData.name || null;
+        prepared.description = levelData.description || levelData.desc || null;
+
+        return prepared;
     }
 
     fadeToGame() {
@@ -2050,6 +2717,21 @@ class Game {
 
     resetGame() {
         this.score = 0;
+
+        // Reset custom level pack to first level
+        if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelPack) {
+            this.customLevelIndex = 0;
+            this.customLevelData = this.prepareCustomLevel(this.customLevelPack[0]);
+        }
+
+        this.initLevel();
+        this.state = STATE.PLAYING;
+        this.sound.stopGameMusic();
+        this.sound.startGameMusic();
+    }
+
+    // Restart only the current level (for game over - doesn't reset pack progress)
+    restartCurrentLevel() {
         this.initLevel();
         this.state = STATE.PLAYING;
         this.sound.stopGameMusic();
@@ -2069,6 +2751,8 @@ class Game {
         this.state = STATE.DEMO;
         this.demoTimer = 0;
         this.demoInputTimer = 0;
+        this.demoLastDir = null;
+        this.demoPositionHistory = []; // Track recent positions to detect oscillation
 
         // Use a random Generated Level (5-10) for Demo to rotate themes
         // Levels 5-10 are at indices 4-9
@@ -2098,10 +2782,41 @@ class Game {
         }
 
         this.demoInputTimer += dt;
-        if (this.demoInputTimer > 400) { // New move every 0.4s (slower)
+        if (this.demoInputTimer > 300) { // Move every 300ms
             this.demoInputTimer = 0;
 
-            // Simple Random Walk
+            // Track position history
+            const currentPos = `${this.player.x},${this.player.y}`;
+            this.demoPositionHistory.push(currentPos);
+            if (this.demoPositionHistory.length > 10) {
+                this.demoPositionHistory.shift();
+            }
+
+            // Detect oscillation: if same position appears 3+ times in last 10 moves
+            const posCount = this.demoPositionHistory.filter(p => p === currentPos).length;
+            const isOscillating = posCount >= 3;
+
+            // If oscillating, use random move to break out
+            if (isOscillating) {
+                const dirs = [
+                    { x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }
+                ];
+                let validMoves = [];
+                for (let dir of dirs) {
+                    if (this.isDemoMoveSafe(this.player.x + dir.x, this.player.y + dir.y)) {
+                        validMoves.push(dir);
+                    }
+                }
+                if (validMoves.length > 0) {
+                    const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+                    this.player.nextDirX = move.x;
+                    this.player.nextDirY = move.y;
+                    this.demoLastDir = move;
+                    this.demoPositionHistory = []; // Reset history after breaking out
+                    return;
+                }
+            }
+
             const dirs = [
                 { x: 0, y: -1 }, // Up
                 { x: 0, y: 1 },  // Down
@@ -2109,15 +2824,130 @@ class Game {
                 { x: 1, y: 0 }   // Right
             ];
 
-            // Try to find a valid move (not into wall)
+            // Use dynamite strategically
+            if (this.dynamiteCount > 0) {
+                // Check if surrounded by rocks or stuck
+                let rocksNearby = 0;
+                let blockedDirs = 0;
+                for (const dir of dirs) {
+                    const nx = this.player.x + dir.x;
+                    const ny = this.player.y + dir.y;
+                    if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
+                        const tile = this.grid[ny][nx];
+                        if (tile === TYPES.ROCK) rocksNearby++;
+                        if (tile === TYPES.WALL || tile === TYPES.ROCK || tile === TYPES.STEEL) {
+                            blockedDirs++;
+                        }
+                    }
+                }
+
+                // Place dynamite if mostly blocked or oscillating with rocks nearby
+                if ((blockedDirs >= 3 || (isOscillating && rocksNearby >= 1)) && Math.random() < 0.5) {
+                    this.placeDynamite();
+                    // Move away from bomb!
+                    let validMoves = [];
+                    for (let dir of dirs) {
+                        if (this.isDemoMoveSafe(this.player.x + dir.x, this.player.y + dir.y)) {
+                            validMoves.push(dir);
+                        }
+                    }
+                    if (validMoves.length > 0) {
+                        const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+                        this.player.nextDirX = move.x;
+                        this.player.nextDirY = move.y;
+                        this.demoLastDir = move;
+                    }
+                    return;
+                }
+            }
+
+            // Check for nearby enemies - if too close, flee!
+            let nearestEnemy = null;
+            let nearestEnemyDist = Infinity;
+            for (const enemy of this.enemies) {
+                const dist = Math.abs(enemy.x - this.player.x) + Math.abs(enemy.y - this.player.y);
+                if (dist < nearestEnemyDist) {
+                    nearestEnemyDist = dist;
+                    nearestEnemy = enemy;
+                }
+            }
+
+            // If enemy is very close (within 3 tiles), flee!
+            if (nearestEnemy && nearestEnemyDist <= 3) {
+                let bestMove = null;
+                let bestDist = nearestEnemyDist;
+
+                for (let dir of dirs) {
+                    const nextX = this.player.x + dir.x;
+                    const nextY = this.player.y + dir.y;
+                    if (this.isDemoMoveSafe(nextX, nextY)) {
+                        const newDist = Math.abs(nearestEnemy.x - nextX) + Math.abs(nearestEnemy.y - nextY);
+                        if (newDist > bestDist) {
+                            bestDist = newDist;
+                            bestMove = dir;
+                        }
+                    }
+                }
+
+                if (bestMove) {
+                    this.player.nextDirX = bestMove.x;
+                    this.player.nextDirY = bestMove.y;
+                    this.demoLastDir = bestMove;
+                    return;
+                }
+            }
+
+            // Find nearest diamond using BFS
+            const path = this.findPathToNearest(TYPES.DIAMOND);
+
+            if (path && path.length > 0) {
+                const nextStep = path[0];
+                const dir = {
+                    x: nextStep.x - this.player.x,
+                    y: nextStep.y - this.player.y
+                };
+                this.player.nextDirX = dir.x;
+                this.player.nextDirY = dir.y;
+                this.demoLastDir = dir;
+                return;
+            }
+
+            // No diamond found - try exit if we have enough diamonds
+            if (this.diamondsCollected >= this.diamondsNeeded) {
+                const exitPath = this.findPathToNearest(TYPES.EXIT);
+                if (exitPath && exitPath.length > 0) {
+                    const nextStep = exitPath[0];
+                    const dir = {
+                        x: nextStep.x - this.player.x,
+                        y: nextStep.y - this.player.y
+                    };
+                    this.player.nextDirX = dir.x;
+                    this.player.nextDirY = dir.y;
+                    this.demoLastDir = dir;
+                    return;
+                }
+            }
+
+            // Fallback: Smart random walk (avoid going back)
             let validMoves = [];
             for (let dir of dirs) {
                 const nextX = this.player.x + dir.x;
                 const nextY = this.player.y + dir.y;
-                if (nextX >= 0 && nextX < GRID_WIDTH && nextY >= 0 && nextY < GRID_HEIGHT) {
-                    const tile = this.grid[nextY][nextX];
-                    // Avoid walls and rocks (unless rock is falling, but simple check is enough)
-                    if (tile !== TYPES.WALL && tile !== TYPES.ROCK) {
+                if (this.isDemoMoveSafe(nextX, nextY)) {
+                    // Avoid going back to where we came from (prevent oscillation)
+                    if (this.demoLastDir && dir.x === -this.demoLastDir.x && dir.y === -this.demoLastDir.y) {
+                        continue; // Skip reverse direction
+                    }
+                    validMoves.push(dir);
+                }
+            }
+
+            // If no valid moves except reverse, allow reverse
+            if (validMoves.length === 0) {
+                for (let dir of dirs) {
+                    const nextX = this.player.x + dir.x;
+                    const nextY = this.player.y + dir.y;
+                    if (this.isDemoMoveSafe(nextX, nextY)) {
                         validMoves.push(dir);
                     }
                 }
@@ -2127,8 +2957,81 @@ class Game {
                 const move = validMoves[Math.floor(Math.random() * validMoves.length)];
                 this.player.nextDirX = move.x;
                 this.player.nextDirY = move.y;
+                this.demoLastDir = move;
             }
         }
+    }
+
+    isDemoMoveSafe(x, y) {
+        if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return false;
+        const tile = this.grid[y][x];
+        // Safe tiles: empty, dirt, diamond, exit, dynamite pickup
+        if (tile === TYPES.WALL || tile === TYPES.ROCK || tile === TYPES.STEEL ||
+            tile === TYPES.ENEMY || tile === TYPES.AMOEBA) {
+            return false;
+        }
+        // Check if enemy is on this tile
+        for (const enemy of this.enemies) {
+            if (enemy.x === x && enemy.y === y) return false;
+        }
+        return true;
+    }
+
+    findPathToNearest(targetType) {
+        // BFS to find shortest path to nearest target
+        const queue = [{ x: this.player.x, y: this.player.y, path: [] }];
+        const visited = new Set();
+        visited.add(`${this.player.x},${this.player.y}`);
+
+        const dirs = [
+            { x: 0, y: -1 },
+            { x: 0, y: 1 },
+            { x: -1, y: 0 },
+            { x: 1, y: 0 }
+        ];
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+
+            for (const dir of dirs) {
+                const nx = current.x + dir.x;
+                const ny = current.y + dir.y;
+                const key = `${nx},${ny}`;
+
+                if (visited.has(key)) continue;
+                if (nx < 0 || nx >= GRID_WIDTH || ny < 0 || ny >= GRID_HEIGHT) continue;
+
+                const tile = this.grid[ny][nx];
+
+                // Found target!
+                if (tile === targetType) {
+                    return [...current.path, { x: nx, y: ny }];
+                }
+
+                // Can we walk through this tile?
+                if (tile === TYPES.EMPTY || tile === TYPES.DIRT || tile === TYPES.DIAMOND ||
+                    tile === TYPES.DYNAMITE_PICKUP || tile === TYPES.EXIT) {
+                    // Check for enemies
+                    let hasEnemy = false;
+                    for (const enemy of this.enemies) {
+                        if (enemy.x === nx && enemy.y === ny) {
+                            hasEnemy = true;
+                            break;
+                        }
+                    }
+                    if (!hasEnemy) {
+                        visited.add(key);
+                        queue.push({
+                            x: nx,
+                            y: ny,
+                            path: [...current.path, { x: nx, y: ny }]
+                        });
+                    }
+                }
+            }
+        }
+
+        return null; // No path found
     }
 
     updateMenuUI() {
@@ -2144,9 +3047,82 @@ class Game {
                 this.sound.startMenuMusic();
             }
 
+            // Update button selection visual
+            this.updateMenuSelection();
+
         } else {
             menuOverlay.classList.add('hidden');
             document.querySelector('.hud-panel').classList.remove('hidden');
+        }
+    }
+
+    updateMenuSelection() {
+        // Remove selection from all buttons
+        this.menuButtons.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.remove('selected');
+        });
+
+        // Add selection to current button
+        const selectedBtn = document.getElementById(this.menuButtons[this.menuSelectedIndex]);
+        if (selectedBtn) {
+            selectedBtn.classList.add('selected');
+        }
+    }
+
+    updatePauseSelection() {
+        // Remove selection from all pause buttons
+        this.pauseButtons.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.remove('selected');
+        });
+
+        // Add selection to current button
+        const selectedBtn = document.getElementById(this.pauseButtons[this.pauseSelectedIndex]);
+        if (selectedBtn) {
+            selectedBtn.classList.add('selected');
+        }
+    }
+
+    updateLoadModalSelection() {
+        // Remove selection from all load modal buttons
+        this.loadModalButtons.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.remove('selected');
+        });
+
+        // Add selection to current button
+        const selectedBtn = document.getElementById(this.loadModalButtons[this.loadModalSelectedIndex]);
+        if (selectedBtn) {
+            selectedBtn.classList.add('selected');
+        }
+    }
+
+    toggleFullscreen() {
+        const elem = document.documentElement;
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement ||
+            document.mozFullScreenElement || document.msFullscreenElement;
+
+        if (!isFullscreen) {
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
         }
     }
 
@@ -2197,7 +3173,9 @@ class Game {
                     if (this.state === STATE.PLAYING) {
                         this.prevState = STATE.PLAYING;
                         this.state = STATE.PAUSED;
+                        this.pauseSelectedIndex = 0;
                         document.getElementById('pause-overlay').classList.remove('hidden');
+                        this.updatePauseSelection();
                     } else if (this.state === STATE.PAUSED) {
                         this.state = this.prevState || STATE.PLAYING;
                         document.getElementById('pause-overlay').classList.add('hidden');
@@ -2210,18 +3188,16 @@ class Game {
             // Action Button (A/Cross - Button 0) for Restart/Start
             if (gp.buttons[0] && gp.buttons[0].pressed) {
                 if (!this.gamepadActionLocked) {
-                    this.gamepadActionLocked = true;
                     if (this.state === STATE.NAME_ENTRY) {
+                        this.gamepadActionLocked = true;
                         this.submitHighScore();
                     } else if (this.state === STATE.MENU) {
+                        // Menu selection handled in update() - don't lock here
+                    } else if (this.state === STATE.GAMEOVER) {
                         if (this.highScorePending) return;
-                        this.initLevel();
-                        this.startGame();
-                    } else if (this.state === STATE.GAMEOVER || this.state === STATE.WIN) {
-                        if (this.highScorePending) return;
+                        this.gamepadActionLocked = true;
 
                         if (this.isTesting) {
-                            // Return to editor immediately
                             this.state = STATE.EDITOR;
                             document.getElementById('editor-overlay').classList.remove('hidden');
                             document.getElementById('message-overlay').classList.add('hidden');
@@ -2229,10 +3205,26 @@ class Game {
                             return;
                         }
 
-                        if (this.state === STATE.WIN && this.currentLevelIndex >= LEVELS.length) {
+                        document.getElementById('message-overlay').classList.add('hidden');
+                        // GAMEOVER: restart current level only (keep pack progress)
+                        this.restartCurrentLevel();
+                    } else if (this.state === STATE.WIN) {
+                        if (this.highScorePending) return;
+                        this.gamepadActionLocked = true;
+
+                        if (this.isTesting) {
+                            this.state = STATE.EDITOR;
+                            document.getElementById('editor-overlay').classList.remove('hidden');
+                            document.getElementById('message-overlay').classList.add('hidden');
+                            this.isTesting = false;
+                            return;
+                        }
+
+                        if (this.currentLevelIndex >= LEVELS.length) {
                             this.currentLevelIndex = 0;
                         }
                         document.getElementById('message-overlay').classList.add('hidden');
+                        // WIN: restart from beginning
                         this.resetGame();
                     }
                 }
@@ -2626,7 +3618,7 @@ class Game {
 
                             // Different effects based on enemy type
                             if (enemy.type === ENEMY_TYPES.BASIC) {
-                                // BASIC: Spawn 3x3 diamonds
+                                // BASIC: Spawn 3x3 diamonds - convert ALL destructible tiles
                                 for (let dy = -1; dy <= 1; dy++) {
                                     for (let dx = -1; dx <= 1; dx++) {
                                         const nx = enemyX + dx;
@@ -2634,8 +3626,22 @@ class Game {
 
                                         // Skip border walls
                                         if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
-                                            // Only place diamond if cell is empty or was the enemy/rock
-                                            if (this.grid[ny][nx] === TYPES.EMPTY || (nx === enemyX && ny === enemyY)) {
+                                            const tile = this.grid[ny][nx];
+
+                                            // Kill player if in explosion radius
+                                            if (this.player.x === nx && this.player.y === ny) {
+                                                this.die();
+                                            }
+
+                                            // Convert all destructible tiles to diamonds (except STEEL and EXIT)
+                                            if (tile !== TYPES.STEEL && tile !== TYPES.EXIT && tile !== TYPES.PLAYER) {
+                                                // Remove other enemies in the area
+                                                if (tile === TYPES.ENEMY) {
+                                                    const otherEnemyIndex = this.enemies.findIndex(e => e.x === nx && e.y === ny);
+                                                    if (otherEnemyIndex !== -1) {
+                                                        this.enemies.splice(otherEnemyIndex, 1);
+                                                    }
+                                                }
                                                 this.grid[ny][nx] = TYPES.DIAMOND;
                                                 this.spawnParticles(nx * TILE_SIZE + TILE_SIZE / 2, ny * TILE_SIZE + TILE_SIZE / 2, '#00ffff', 5);
                                             }
@@ -2666,6 +3672,13 @@ class Game {
                             // Trigger Shake
                             this.shakeTimer = 200;
                             this.sound.playExplosion();
+
+                            // Haptic feedback for enemy kill
+                            if (enemy.type === ENEMY_TYPES.BASIC) {
+                                this.vibrate(150, 0.6, 0.8); // Stronger feedback for diamond creation
+                            } else {
+                                this.vibrate(100, 0.4, 0.6); // Standard feedback for regular explosion
+                            }
                         }
                     } else if (this.grid[y + 1][x] === TYPES.WALL || this.grid[y + 1][x] === TYPES.ROCK || this.grid[y + 1][x] === TYPES.DIAMOND || this.grid[y + 1][x] === TYPES.STEEL || this.grid[y + 1][x] === TYPES.MAGIC_WALL) {
                         // Roll off rounded objects
@@ -2724,7 +3737,23 @@ class Game {
                     const ny = y + dy;
 
                     if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
-                        if (this.grid[ny][nx] === TYPES.EMPTY || (nx === x && ny === y)) {
+                        const tile = this.grid[ny][nx];
+
+                        // Kill player if in explosion radius
+                        if (this.player.x === nx && this.player.y === ny) {
+                            this.die();
+                            return; // Player died, stop processing this explosion
+                        }
+
+                        // Convert all destructible tiles to diamonds (except STEEL and EXIT)
+                        if (tile !== TYPES.STEEL && tile !== TYPES.EXIT) {
+                            // Remove other enemies in the area
+                            if (tile === TYPES.ENEMY) {
+                                const otherEnemyIndex = this.enemies.findIndex(e => e.x === nx && e.y === ny);
+                                if (otherEnemyIndex !== -1) {
+                                    this.enemies.splice(otherEnemyIndex, 1);
+                                }
+                            }
                             this.grid[ny][nx] = TYPES.DIAMOND;
                             this.spawnParticles(nx * TILE_SIZE + TILE_SIZE / 2, ny * TILE_SIZE + TILE_SIZE / 2, '#00ffff', 5);
                         }
@@ -2751,6 +3780,13 @@ class Game {
 
         this.shakeTimer = 200;
         this.sound.playExplosion();
+
+        // Haptic feedback for enemy kill
+        if (enemy.type === ENEMY_TYPES.BASIC) {
+            this.vibrate(150, 0.6, 0.8); // Stronger feedback for diamond creation
+        } else {
+            this.vibrate(100, 0.4, 0.6); // Standard feedback for regular explosion
+        }
     }
 
     die() {
@@ -2823,6 +3859,46 @@ class Game {
 
         this.score += Math.floor(this.timeLeft) * 10; // Time bonus
         this.updateUI();
+
+        // Handle Custom Level Pack progression
+        if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelPack) {
+            this.customLevelIndex++;
+
+            if (this.customLevelIndex < this.customLevelPack.length) {
+                // More levels in the pack
+                this.customLevelData = this.prepareCustomLevel(this.customLevelPack[this.customLevelIndex]);
+                const nextTitle = this.customLevelData.title || `Level ${this.customLevelIndex + 1}`;
+                const subtitle = this.customLevelData.description || `${this.customLevelIndex + 1} of ${this.customLevelPack.length}`;
+                this.showMessage("LEVEL COMPLETE", `Next: ${nextTitle}`);
+                this.sound.playWin();
+                setTimeout(() => {
+                    // Show level intro if has description
+                    if (this.customLevelData.description) {
+                        this.showMessage(this.customLevelData.title || "LEVEL START", this.customLevelData.description);
+                        setTimeout(() => {
+                            document.getElementById('message-overlay').classList.add('hidden');
+                            this.initLevel();
+                            this.startGame();
+                        }, 2000);
+                    } else {
+                        this.initLevel();
+                        this.startGame();
+                    }
+                }, 2000);
+            } else {
+                // Completed all custom levels
+                this.state = STATE.WIN;
+                this.sound.playWin();
+                this.showMessage("PACK COMPLETE!", `Final Score: ${this.score}`);
+                setTimeout(() => {
+                    this.state = STATE.MENU;
+                    this.customLevelPack = null;
+                    this.customLevelData = null;
+                    this.updateMenuUI();
+                }, 5000);
+            }
+            return;
+        }
 
         this.currentLevelIndex++;
 

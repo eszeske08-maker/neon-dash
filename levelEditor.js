@@ -150,6 +150,7 @@ class LevelEditor {
         }
 
         if (key === 's' || key === 'S') {
+            this.saveLevel();
             return;
         }
 
@@ -592,6 +593,106 @@ class LevelEditor {
             setTimeout(() => {
                 indicator.innerText = originalText;
             }, 1000);
+        }
+    }
+
+    // Convert numeric grid to string map format
+    gridToMap() {
+        const charMap = {
+            [TYPES.EMPTY]: ' ',
+            [TYPES.DIRT]: '.',
+            [TYPES.WALL]: '#',
+            [TYPES.ROCK]: 'O',
+            [TYPES.DIAMOND]: 'D',
+            [TYPES.PLAYER]: 'S',
+            [TYPES.ENEMY]: 'E',  // Default, will be replaced with P/K for different types
+            [TYPES.EXIT]: 'X',
+            [TYPES.DYNAMITE_PICKUP]: 'T',
+            [TYPES.STEEL]: 'W',
+            [TYPES.MAGIC_WALL]: 'M',
+            [TYPES.AMOEBA]: 'A'
+        };
+
+        const map = [];
+        for (let y = 0; y < this.height; y++) {
+            let row = '';
+            for (let x = 0; x < this.width; x++) {
+                const tile = this.grid[y][x];
+                if (tile === TYPES.ENEMY) {
+                    // Use different characters for enemy types
+                    const enemyType = this.enemyTypes[`${x},${y}`] || ENEMY_TYPES.BASIC;
+                    if (enemyType === ENEMY_TYPES.PATROLLER) {
+                        row += 'P';
+                    } else if (enemyType === ENEMY_TYPES.SEEKER) {
+                        row += 'K';
+                    } else {
+                        row += 'E';
+                    }
+                } else {
+                    row += charMap[tile] || ' ';
+                }
+            }
+            map.push(row);
+        }
+        return map;
+    }
+
+    // Get export data in map format
+    getExportData() {
+        return {
+            title: this.levelName,
+            map: this.gridToMap(),
+            diamondsNeeded: this.diamondsNeeded,
+            time: this.timeLimit
+        };
+    }
+
+    // Copy to clipboard
+    copyToClipboard() {
+        const data = this.getExportData();
+        const json = JSON.stringify(data, null, 2);
+
+        navigator.clipboard.writeText(json).then(() => {
+            console.log('Copied to clipboard!');
+            const indicator = document.getElementById('enemy-type-indicator');
+            if (indicator) {
+                const originalText = indicator.innerText;
+                indicator.innerText = 'COPIED!';
+                setTimeout(() => {
+                    indicator.innerText = originalText;
+                }, 1500);
+            }
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            // Fallback: show in console
+            console.log('Level JSON:', json);
+            alert('Copy failed. Check console for JSON.');
+        });
+    }
+
+    // Download as JSON file
+    downloadJSON() {
+        const data = this.getExportData();
+        const json = JSON.stringify(data, null, 2);
+
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${this.levelName.replace(/\s+/g, '_').toLowerCase()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        const indicator = document.getElementById('enemy-type-indicator');
+        if (indicator) {
+            const originalText = indicator.innerText;
+            indicator.innerText = 'DOWNLOADED!';
+            setTimeout(() => {
+                indicator.innerText = originalText;
+            }, 1500);
         }
     }
 
