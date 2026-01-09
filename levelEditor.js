@@ -127,7 +127,7 @@ class LevelEditor {
         }
 
         if (key === 'e' || key === 'E') {
-            const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.SEEKER, ENEMY_TYPES.PATROLLER];
+            const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.SEEKER, ENEMY_TYPES.PATROLLER, ENEMY_TYPES.BUTTERFLY];
             const currentIndex = types.indexOf(this.selectedEnemyType);
             this.selectedEnemyType = types[(currentIndex + 1) % types.length];
 
@@ -240,7 +240,7 @@ class LevelEditor {
         });
 
         checkButton(9, () => { // Start = Enemy type
-            const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.SEEKER, ENEMY_TYPES.PATROLLER];
+            const types = [ENEMY_TYPES.BASIC, ENEMY_TYPES.SEEKER, ENEMY_TYPES.PATROLLER, ENEMY_TYPES.BUTTERFLY];
             const idx = types.indexOf(this.selectedEnemyType);
             this.selectedEnemyType = types[(idx + 1) % types.length];
 
@@ -474,7 +474,8 @@ class LevelEditor {
         const typeNames = {
             [ENEMY_TYPES.BASIC]: 'BASIC',
             [ENEMY_TYPES.SEEKER]: 'SEEKER',
-            [ENEMY_TYPES.PATROLLER]: 'PATROLLER'
+            [ENEMY_TYPES.PATROLLER]: 'PATROLLER',
+            [ENEMY_TYPES.BUTTERFLY]: 'BUTTERFLY'
         };
         return typeNames[this.selectedEnemyType] || 'BASIC';
     }
@@ -625,6 +626,8 @@ class LevelEditor {
                         row += 'P';
                     } else if (enemyType === ENEMY_TYPES.SEEKER) {
                         row += 'K';
+                    } else if (enemyType === ENEMY_TYPES.BUTTERFLY) {
+                        row += 'B';
                     } else {
                         row += 'E';
                     }

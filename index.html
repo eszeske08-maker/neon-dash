@@ -30,9 +30,10 @@
                     <button id="btn-campaign" class="menu-button primary">🚀 CAMPAIGN</button>
                     <button id="btn-endless" class="menu-button">♾️ ENDLESS</button>
                     <button id="btn-hardcore" class="menu-button danger">💀 HARDCORE</button>
-                    <button id="btn-rogue" class="menu-button special" disabled>💎 ROGUE MINER (WIP)</button>
+                    <button id="btn-rogue" class="menu-button special">💎 ROGUE MINER</button>
                     <button id="btn-load-level" class="menu-button">🌐 LOAD LEVEL</button>
                     <button id="btn-editor" class="menu-button">🛠️ LEVEL EDITOR</button>
+                    <button id="btn-help" class="menu-button">📖 HELP</button>
                 </div>
                 <p class="menu-hint">Select a Game Mode to Start</p>
             </div>
@@ -86,6 +87,145 @@
                 </div>
             </div>
 
+            <div id="perk-select-overlay" class="hidden">
+                <h1>CHOOSE YOUR UPGRADE</h1>
+                <p id="perk-depth-info">Depth 1 Complete!</p>
+                <div class="perk-cards">
+                    <div class="perk-card" id="perk-card-0" tabindex="0">
+                        <span class="perk-icon">⛏️</span>
+                        <h3 class="perk-name">Drill Bit+</h3>
+                        <p class="perk-desc">Digging speed +20%</p>
+                    </div>
+                    <div class="perk-card" id="perk-card-1" tabindex="0">
+                        <span class="perk-icon">🏃</span>
+                        <h3 class="perk-name">Runner</h3>
+                        <p class="perk-desc">Movement speed +10%</p>
+                    </div>
+                    <div class="perk-card" id="perk-card-2" tabindex="0">
+                        <span class="perk-icon">⛑️</span>
+                        <h3 class="perk-name">Hard Hat</h3>
+                        <p class="perk-desc">Blocks first damage per level</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="help-modal" class="hidden">
+                <div class="modal-content help-modal-content">
+                    <h2>📖 GAME GUIDE</h2>
+                    <div class="help-scroll-area">
+
+                        <div class="help-section">
+                            <h3>🎮 GAME MODES</h3>
+                            <div class="help-item"><span class="help-icon">🚀</span><strong>CAMPAIGN</strong> - Play
+                                through handcrafted levels with increasing difficulty.</div>
+                            <div class="help-item"><span class="help-icon">♾️</span><strong>ENDLESS</strong> -
+                                Procedurally generated levels that go on forever. How far can you go?</div>
+                            <div class="help-item"><span class="help-icon">💀</span><strong>HARDCORE</strong> - One life
+                                only! No restarts. The ultimate challenge.</div>
+                            <div class="help-item"><span class="help-icon">💎</span><strong>ROGUE MINER</strong> -
+                                Roguelike mode with upgrades between levels. Collect perks to become stronger!</div>
+                        </div>
+
+                        <div class="help-section">
+                            <h3>🧱 TILES & ELEMENTS</h3>
+                            <div class="help-item"><span class="help-icon tile-empty">⬛</span><strong>EMPTY</strong> -
+                                Open space you can move through freely.</div>
+                            <div class="help-item"><span class="help-icon tile-dirt">🟫</span><strong>DIRT</strong> -
+                                Diggable terrain. Walk through it to clear and earn 10 points.</div>
+                            <div class="help-item"><span class="help-icon tile-wall">⬜</span><strong>WALL</strong> -
+                                Indestructible barrier. Cannot be passed or destroyed.</div>
+                            <div class="help-item"><span class="help-icon tile-rock">🪨</span><strong>ROCK</strong> -
+                                Falls when unsupported. Deadly when falling! Can roll off other rocks.</div>
+                            <div class="help-item"><span
+                                    class="help-icon tile-diamond">💎</span><strong>DIAMOND</strong> - Collect these!
+                                Worth 100 points. Collect enough to unlock the exit.</div>
+                            <div class="help-item"><span class="help-icon tile-player">🧑</span><strong>PLAYER</strong>
+                                - That's you! Navigate the caves and collect diamonds.</div>
+                            <div class="help-item"><span class="help-icon tile-exit">🚪</span><strong>EXIT</strong> -
+                                Your goal! Unlocks when you collect enough diamonds. Reach it to complete the level.
+                            </div>
+                            <div class="help-item"><span class="help-icon tile-tnt">💣</span><strong>TNT PICKUP</strong>
+                                - Collect to add explosives to your inventory. Use them wisely!</div>
+                            <div class="help-item"><span class="help-icon tile-steel">🔲</span><strong>STEEL
+                                    WALL</strong> - Extra reinforced wall. Cannot be destroyed even by explosions.</div>
+                            <div class="help-item"><span class="help-icon tile-magic">✨</span><strong>MAGIC
+                                    WALL</strong> - Transforms rocks into diamonds and diamonds into rocks when they
+                                fall through!</div>
+                            <div class="help-item"><span class="help-icon tile-amoeba">🦠</span><strong>AMOEBA</strong>
+                                - Living organism that grows over time. If it grows too large, it turns into rocks. If
+                                trapped, it becomes diamonds!</div>
+                        </div>
+
+                        <div class="help-section">
+                            <h3>👾 ENEMY TYPES</h3>
+                            <div class="help-item"><span class="help-icon enemy-basic">👾</span><strong>BASIC</strong> -
+                                Wanders randomly. Unpredictable but not smart.</div>
+                            <div class="help-item"><span class="help-icon enemy-seeker">🎯</span><strong>SEEKER</strong>
+                                - Actively hunts the player! Dangerous and relentless.</div>
+                            <div class="help-item"><span
+                                    class="help-icon enemy-patroller">🔄</span><strong>PATROLLER</strong> - Follows
+                                walls clockwise. Predictable patrol routes.</div>
+                            <div class="help-item"><span
+                                    class="help-icon enemy-butterfly">🦋</span><strong>BUTTERFLY</strong> - Follows
+                                walls counter-clockwise. When crushed by rocks, explodes into diamonds!</div>
+                        </div>
+
+                        <div class="help-section">
+                            <h3>🎹 CONTROLS</h3>
+                            <div class="help-subsection">
+                                <h4>⌨️ Keyboard</h4>
+                                <div class="help-item"><strong>Arrow Keys / WASD</strong> - Move player</div>
+                                <div class="help-item"><strong>Space</strong> - Place TNT explosive</div>
+                                <div class="help-item"><strong>Escape</strong> - Pause / Resume game</div>
+                                <div class="help-item"><strong>R</strong> - Restart level (double-tap)</div>
+                                <div class="help-item"><strong>M</strong> - Toggle sound on/off</div>
+                                <div class="help-item"><strong>F</strong> - Toggle fullscreen</div>
+                                <div class="help-item"><strong>L</strong> - Open Level Editor</div>
+                            </div>
+                            <div class="help-subsection">
+                                <h4>🎮 Gamepad</h4>
+                                <div class="help-item"><strong>D-Pad / Left Stick</strong> - Move player</div>
+                                <div class="help-item"><strong>A / Cross</strong> - Confirm / Start</div>
+                                <div class="help-item"><strong>B / Circle</strong> - Place TNT</div>
+                                <div class="help-item"><strong>Start</strong> - Pause / Resume</div>
+                            </div>
+                            <div class="help-subsection">
+                                <h4>📱 Mobile</h4>
+                                <div class="help-item"><strong>D-Pad</strong> - Virtual directional pad for movement
+                                </div>
+                                <div class="help-item"><strong>TNT Button</strong> - Place explosive</div>
+                                <div class="help-item"><strong>Pause Button</strong> - Access pause menu</div>
+                            </div>
+                        </div>
+
+                        <div class="help-section">
+                            <h3>💰 SCORING</h3>
+                            <div class="help-item"><span class="help-icon">🟫</span><strong>Digging Dirt</strong> - 10
+                                points</div>
+                            <div class="help-item"><span class="help-icon">💎</span><strong>Collecting Diamond</strong>
+                                - 100 points</div>
+                            <div class="help-item"><span class="help-icon">⏱️</span><strong>Time Bonus</strong> -
+                                Remaining seconds × 10</div>
+                            <div class="help-item"><span class="help-icon">🏆</span><strong>Level Complete</strong> -
+                                1000 points</div>
+                        </div>
+
+                        <div class="help-section">
+                            <h3>💡 TIPS</h3>
+                            <div class="help-item">• Rocks and diamonds fall when nothing is below them</div>
+                            <div class="help-item">• Falling objects are deadly - don't stand under them!</div>
+                            <div class="help-item">• Enemies can be crushed by falling rocks</div>
+                            <div class="help-item">• Use TNT to clear paths, but be careful of chain reactions</div>
+                            <div class="help-item">• Butterflies drop diamonds when killed - lure them under rocks!
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="btn-help-close" class="menu-button">BACK</button>
+                    </div>
+                </div>
+            </div>
             <div id="editor-overlay" class="hidden">
                 <div id="editor-toolbar">
                     <div id="editor-palette">
@@ -125,8 +265,8 @@
         </div>
     </div>
 
-    <script src="levelEditor.js?v=107"></script>
-    <script src="game.js?v=107"></script>
+    <script src="levelEditor.js?v=111"></script>
+    <script src="game.js?v=124"></script>
     <script src="mobile.js?v=107"></script>
 </body>
 

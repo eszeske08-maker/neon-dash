@@ -3,8 +3,8 @@
     display: none;
 }
 
-@media (max-width: 768px),
-(hover: none) {
+/* Only show on narrow screens AND touch devices (prevents desktop touch monitors from triggering) */
+@media (max-width: 768px) and (hover: none) and (pointer: coarse) {
     .mobile-only {
         display: block;
     }
@@ -18,6 +18,12 @@
     height: 200px;
     pointer-events: none;
     z-index: 1000;
+    display: none;
+    /* Hidden by default, shown via JS during gameplay */
+}
+
+#mobile-controls.visible {
+    display: block;
 }
 
 #dpad {
@@ -128,6 +134,14 @@
     box-shadow: 0 0 20px rgba(255, 68, 68, 0.8);
 }
 
+/* MOBILE: Hide keyboard instructions in Game Over screen */
+@media (max-width: 768px),
+(hover: none) {
+    #message-subtitle.keyboard-hint {
+        display: none !important;
+    }
+}
+
 /* MOBILE: RESTART button visibility */
 @media (max-width: 768px),
 (hover: none) {
@@ -230,5 +244,165 @@
         padding: 10px 20px;
         font-size: 13px;
         min-width: 100px;
+    }
+}
+
+/* ===== HELP MODAL MOBILE STYLES ===== */
+@media (max-width: 768px),
+(hover: none) {
+    #help-modal {
+        padding: 15px;
+        max-width: 95vw;
+        max-height: 75vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        z-index: 500;
+    }
+
+    .help-modal-content {
+        display: flex;
+        flex-direction: column;
+        max-height: 100%;
+        overflow: hidden;
+    }
+
+    .help-modal-content h2 {
+        font-size: 1.3rem;
+        margin-bottom: 10px;
+        flex-shrink: 0;
+    }
+
+    .help-scroll-area {
+        flex: 1;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .help-section {
+        margin-bottom: 18px;
+        padding-bottom: 15px;
+    }
+
+    .help-section h3 {
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+    }
+
+    .help-item {
+        font-size: 0.75rem;
+        margin-bottom: 8px;
+        gap: 8px;
+    }
+
+    .help-icon {
+        font-size: 1rem;
+        min-width: 24px;
+    }
+
+    .help-subsection {
+        margin: 10px 0;
+        padding-left: 8px;
+    }
+
+    .help-subsection h4 {
+        font-size: 0.8rem;
+        margin-bottom: 8px;
+    }
+
+    #help-modal .modal-buttons {
+        flex-shrink: 0;
+        padding-top: 5px;
+        margin-top: 8px;
+    }
+
+    #help-modal .menu-button {
+        padding: 10px 30px;
+        font-size: 14px;
+    }
+}
+
+/* Landscape mobile - even more compact */
+@media (max-height: 500px) {
+    #help-modal {
+        max-height: 90vh;
+        padding: 10px;
+    }
+
+    .help-modal-content h2 {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+
+    .help-scroll-area {
+        padding: 5px 10px;
+        margin-bottom: 5px;
+    }
+
+    .help-section {
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+
+    .help-section h3 {
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+    }
+
+    .help-item {
+        font-size: 0.7rem;
+        margin-bottom: 5px;
+    }
+
+    #help-modal .modal-buttons {
+        margin-top: 5px;
+        padding-top: 0;
+    }
+
+    #help-modal .menu-button {
+        padding: 8px 25px;
+        font-size: 12px;
+    }
+}
+
+/* ===== MAIN MENU MOBILE LANDSCAPE STYLES ===== */
+@media (max-height: 500px) {
+    #menu-screen {
+        justify-content: flex-start;
+        padding: 10px 20px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .game-title {
+        font-size: 28px;
+        margin-bottom: 10px;
+        flex-shrink: 0;
+    }
+
+    .menu-buttons-container {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        gap: 6px;
+        margin-bottom: 8px;
+        width: 280px;
+        padding: 5px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .menu-button {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    .menu-hint {
+        font-size: 11px;
+        margin-top: 5px;
+        flex-shrink: 0;
     }
 }

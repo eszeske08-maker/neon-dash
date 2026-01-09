@@ -4,7 +4,26 @@
         const game = window.game;
         if (!game) return;
 
+        // Mobile device detection using User Agent (most reliable method)
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+
         function vib(p) { if (navigator.vibrate) navigator.vibrate(p); }
+
+        // Mobile controls visibility - only show during gameplay AND on mobile devices
+        const mobileControls = document.getElementById('mobile-controls');
+        if (mobileControls) {
+            setInterval(() => {
+                // STATE.PLAYING = 1, and must be a mobile device
+                if (game.state === 1 && isMobileDevice()) {
+                    mobileControls.classList.add('visible');
+                } else {
+                    mobileControls.classList.remove('visible');
+                }
+            }, 100);
+        }
 
         // START
 
@@ -33,6 +52,31 @@
             };
             tnt.addEventListener('touchstart', h, { passive: false });
             tnt.addEventListener('mousedown', h);
+
+            // Check if map has any dynamite pickups or player has dynamite
+            function hasDynamiteAvailable() {
+                // Check if player already has dynamite
+                if (game.dynamiteCount && game.dynamiteCount > 0) return true;
+
+                // Check if grid has any DYNAMITE_PICKUP (type 8)
+                if (game.grid) {
+                    for (let y = 0; y < game.grid.length; y++) {
+                        for (let x = 0; x < game.grid[y].length; x++) {
+                            if (game.grid[y][x] === 8) return true; // TYPES.DYNAMITE_PICKUP
+                        }
+                    }
+                }
+                return false;
+            }
+
+            // Show/hide TNT button based on dynamite availability
+            setInterval(() => {
+                if (game.state === 1 && isMobileDevice() && hasDynamiteAvailable()) {
+                    tnt.style.display = 'flex';
+                } else {
+                    tnt.style.display = 'none';
+                }
+            }, 100);
         }
 
         // Pause
@@ -85,6 +129,14 @@
                     if (!game.highScorePending) {
                         document.getElementById('message-overlay').classList.add('hidden');
                         rb.classList.add('hidden');
+
+                        // In Hardcore/Rogue mode, go straight to menu (no restart allowed)
+                        if (game.gameMode === 'hardcore' || game.gameMode === 'rogue') {
+                            game.state = 0; // STATE.MENU
+                            game.sound.stopGameMusic();
+                            game.updateMenuUI();
+                            return;
+                        }
 
                         if (game.state === 2) {
                             // GAMEOVER: restart current level only

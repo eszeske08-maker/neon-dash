@@ -20,15 +20,30 @@ const STATE = {
     EDITOR: 7,
     DEMO: 8,
     LOAD_MODAL: 9,
-    LEVEL_SELECT: 10
+    LEVEL_SELECT: 10,
+    PERK_SELECT: 11
 };
 
 const GAME_MODES = {
     CAMPAIGN: 'campaign',
     ENDLESS: 'endless',
     HARDCORE: 'hardcore',
-    CUSTOM: 'custom'
+    CUSTOM: 'custom',
+    ROGUE: 'rogue'
 };
+
+// Rogue Miner Perks
+const PERKS = [
+    { id: 'drillBit', name: 'Drill Bit+', icon: '⛏️', description: 'Digging speed +20%', type: 'passive' },
+    { id: 'runner', name: 'Runner', icon: '🏃', description: 'Movement speed +10%', type: 'passive' },
+    { id: 'hardHat', name: 'Hard Hat', icon: '⛑️', description: 'Blocks first damage per level', type: 'defense' },
+    { id: 'dynamitePouch', name: 'Dynamite Pouch', icon: '💣', description: 'Start every level with +1 TNT', type: 'resource' },
+    { id: 'luckyCharm', name: 'Lucky Charm', icon: '🍀', description: 'Diamonds give +50% more score', type: 'economy' },
+    { id: 'mineralScanner', name: 'Mineral Scanner', icon: '📡', description: 'Reveals map briefly at level start', type: 'utility' },
+    { id: 'sonicBoom', name: 'Sonic Boom', icon: '💥', description: 'Enemy kills destroy adjacent blocks', type: 'combat' },
+    { id: 'magnet', name: 'Magnet', icon: '🧲', description: 'Diamonds within 2 tiles fly to you', type: 'passive' },
+    { id: 'timeWarp', name: 'Time Warp', icon: '⏰', description: 'Level timer +30 seconds', type: 'utility' }
+];
 
 // Entity Types
 // Entity Types
@@ -65,6 +80,7 @@ const THEMES = [
         dirtDetail: '#3e2723',
         enemySeeker: '#00ff00',
         enemyPatroller: '#0088ff',
+        enemyButterfly: '#ffff00',
         playerDetail: '#ffffff',
         [TYPES.AMOEBA]: '#00ff00'
     },
@@ -84,6 +100,7 @@ const THEMES = [
         dirtDetail: '#311b92',
         enemySeeker: '#ffff00',
         enemyPatroller: '#aa00ff',
+        enemyButterfly: '#00ffff',
         playerDetail: '#000000',
         [TYPES.AMOEBA]: '#00e676'
     },
@@ -103,6 +120,7 @@ const THEMES = [
         dirtDetail: '#003300',
         enemySeeker: '#ff0000',
         enemyPatroller: '#ff6d00',
+        enemyButterfly: '#ffff00',
         playerDetail: '#000000',
         [TYPES.AMOEBA]: '#76ff03'
     },
@@ -122,6 +140,7 @@ const THEMES = [
         dirtDetail: '#870000',
         enemySeeker: '#2962ff',
         enemyPatroller: '#00c853',
+        enemyButterfly: '#ff80ab',
         playerDetail: '#ffffff',
         [TYPES.AMOEBA]: '#ff3d00'
     },
@@ -141,6 +160,7 @@ const THEMES = [
         dirtDetail: '#263238',
         enemySeeker: '#ff80ab',
         enemyPatroller: '#80d8ff',
+        enemyButterfly: '#ffff00',
         playerDetail: '#000000',
         [TYPES.AMOEBA]: '#00b8d4'
     },
@@ -160,6 +180,7 @@ const THEMES = [
         dirtDetail: '#210e09',
         enemySeeker: '#d500f9',
         enemyPatroller: '#ffab00',
+        enemyButterfly: '#00e5ff',
         playerDetail: '#000000',
         [TYPES.AMOEBA]: '#00c853'
     },
@@ -179,6 +200,7 @@ const THEMES = [
         dirtDetail: '#33691e',
         enemySeeker: '#ff00ff',
         enemyPatroller: '#00e5ff',
+        enemyButterfly: '#ff1744',
         playerDetail: '#ffffff',
         [TYPES.AMOEBA]: '#64dd17'
     },
@@ -198,6 +220,7 @@ const THEMES = [
         dirtDetail: '#4a148c',
         enemySeeker: '#00e5ff',
         enemyPatroller: '#f50057',
+        enemyButterfly: '#ffd740',
         playerDetail: '#000000',
         [TYPES.AMOEBA]: '#ffea00'
     }
@@ -368,7 +391,8 @@ class Particle {
 const ENEMY_TYPES = {
     BASIC: 0,
     SEEKER: 1,
-    PATROLLER: 2
+    PATROLLER: 2,
+    BUTTERFLY: 3
 };
 
 class Enemy {
@@ -376,9 +400,11 @@ class Enemy {
         this.x = x;
         this.y = y;
         this.type = type;
-        this.dirX = 1; // Start moving right
-        this.dirY = 0;
+        this.dirX = 0; // Start moving up (for clockwise wall-following with left-hand rule)
+        this.dirY = -1;
         this.moveTimer = 0;
+        this.needsDirectionInit = (type === ENEMY_TYPES.BUTTERFLY || type === ENEMY_TYPES.BASIC); // Wall-aware init
+        this.searchingForWall = false;
         // Seeker moves slower to be fair
         this.moveInterval = type === ENEMY_TYPES.SEEKER ? 600 : 400;
 
@@ -394,6 +420,82 @@ class Enemy {
         }
     }
 
+    initializeDirectionForButterfly(game) {
+        // For BUTTERFLY (counter-clockwise, wall on RIGHT side):
+        // Set initial direction so that the nearest wall is on the RIGHT
+        const up = this.isBlocked(this.x, this.y - 1, game);
+        const down = this.isBlocked(this.x, this.y + 1, game);
+        const left = this.isBlocked(this.x - 1, this.y, game);
+        const right = this.isBlocked(this.x + 1, this.y, game);
+
+        // Choose direction based on where walls are (wall should be on RIGHT)
+        // getRightDirection mapping: RIGHT→DOWN, DOWN→LEFT, LEFT→UP, UP→RIGHT
+        if (down) {
+            // Wall below → face RIGHT (when facing right, getRightDirection = down)
+            this.dirX = 1; this.dirY = 0;
+            this.searchingForWall = false;
+        } else if (left) {
+            // Wall on left → face DOWN (when facing down, getRightDirection = left)
+            this.dirX = 0; this.dirY = 1;
+            this.searchingForWall = false;
+        } else if (up) {
+            // Wall above → face LEFT (when facing left, getRightDirection = up)
+            this.dirX = -1; this.dirY = 0;
+            this.searchingForWall = false;
+        } else if (right) {
+            // Wall on right → face UP (when facing up, getRightDirection = right)
+            this.dirX = 0; this.dirY = -1;
+            this.searchingForWall = false;
+        } else {
+            // No adjacent walls - go straight until we find one (counter-clockwise preference: go left)
+            this.dirX = -1; this.dirY = 0;
+            this.searchingForWall = true;
+        }
+
+        this.needsDirectionInit = false;
+    }
+
+    initializeDirectionForBasic(game) {
+        // For BASIC (clockwise, wall on LEFT side):
+        // Set initial direction so that the nearest wall is on the LEFT
+        const up = this.isBlocked(this.x, this.y - 1, game);
+        const down = this.isBlocked(this.x, this.y + 1, game);
+        const left = this.isBlocked(this.x - 1, this.y, game);
+        const right = this.isBlocked(this.x + 1, this.y, game);
+
+        // Choose direction based on where walls are (wall should be on LEFT)
+        // getLeftDirection mapping: RIGHT→UP, UP→LEFT, LEFT→DOWN, DOWN→RIGHT
+        if (down) {
+            // Wall below → face LEFT (when facing left, getLeftDirection = down)
+            this.dirX = -1; this.dirY = 0;
+            this.searchingForWall = false;
+        } else if (right) {
+            // Wall on right → face DOWN (when facing down, getLeftDirection = right)
+            this.dirX = 0; this.dirY = 1;
+            this.searchingForWall = false;
+        } else if (up) {
+            // Wall above → face RIGHT (when facing right, getLeftDirection = up)
+            this.dirX = 1; this.dirY = 0;
+            this.searchingForWall = false;
+        } else if (left) {
+            // Wall on left → face UP (when facing up, getLeftDirection = left)
+            this.dirX = 0; this.dirY = -1;
+            this.searchingForWall = false;
+        } else {
+            // No adjacent walls - go straight until we find one (clockwise preference: go right)
+            this.dirX = 1; this.dirY = 0;
+            this.searchingForWall = true;
+        }
+
+        this.needsDirectionInit = false;
+    }
+
+    isBlocked(x, y, game) {
+        if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) return true;
+        const tile = game.grid[y][x];
+        return tile !== TYPES.EMPTY && tile !== TYPES.PLAYER && tile !== TYPES.AMOEBA;
+    }
+
     update(dt, game) {
         this.moveTimer += dt;
         if (this.moveTimer > this.moveInterval) {
@@ -407,24 +509,203 @@ class Enemy {
             this.moveSeeker(game);
         } else if (this.type === ENEMY_TYPES.PATROLLER) {
             this.movePatroller(game);
+        } else if (this.type === ENEMY_TYPES.BUTTERFLY) {
+            if (this.needsDirectionInit) {
+                this.initializeDirectionForButterfly(game);
+            }
+            this.moveButterfly(game);  // BUTTERFLY: right-hand rule = counter-clockwise
         } else {
-            this.moveBasic(game);
+            if (this.needsDirectionInit) {
+                this.initializeDirectionForBasic(game);
+            }
+            this.moveBasic(game);  // BASIC: left-hand rule = clockwise
         }
     }
 
     moveBasic(game) {
-        let nextX = this.x + this.dirX;
-        let nextY = this.y + this.dirY;
+        // Boulder Dash wall-following behavior (left-hand rule for CLOCKWISE motion):
+        // The enemy keeps a wall on its LEFT side and follows it.
 
-        if (!this.isValidMove(nextX, nextY, game)) {
-            this.changeDirectionClockwise();
-            // Try again
-            nextX = this.x + this.dirX;
-            nextY = this.y + this.dirY;
-            if (!this.isValidMove(nextX, nextY, game)) return;
+        // If in searching mode (no wall found yet), go straight until we find one
+        if (this.searchingForWall) {
+            const straightX = this.x + this.dirX;
+            const straightY = this.y + this.dirY;
+
+            // Check if there's now a wall on our left side
+            const leftDir = this.getLeftDirection();
+            const leftX = this.x + leftDir.x;
+            const leftY = this.y + leftDir.y;
+            if (!this.isValidMove(leftX, leftY, game)) {
+                // Found a wall on the left! Switch to normal wall-following
+                this.searchingForWall = false;
+            }
+
+            if (this.isValidMove(straightX, straightY, game)) {
+                this.performMove(straightX, straightY, game);
+                return;
+            } else {
+                // Hit something - turn right (clockwise) and continue searching
+                const rightDir = this.getRightDirection();
+                this.dirX = rightDir.x;
+                this.dirY = rightDir.y;
+                const newX = this.x + this.dirX;
+                const newY = this.y + this.dirY;
+                if (this.isValidMove(newX, newY, game)) {
+                    this.performMove(newX, newY, game);
+                }
+                return;
+            }
         }
 
-        this.performMove(nextX, nextY, game);
+        // Normal wall-following mode:
+        // 1. If LEFT is now FREE (wall ended) -> turn left and move (to keep following the wall)
+        // 2. If LEFT is blocked, try to go STRAIGHT
+        // 3. If STRAIGHT blocked, try RIGHT
+        // 4. If RIGHT blocked, REVERSE
+
+        // Get left direction (counter-clockwise from current direction)
+        const leftDir = this.getLeftDirection();
+        const leftX = this.x + leftDir.x;
+        const leftY = this.y + leftDir.y;
+
+        // Check if left side is free (wall ended, we should turn left to follow it)
+        if (this.isValidMove(leftX, leftY, game)) {
+            this.dirX = leftDir.x;
+            this.dirY = leftDir.y;
+            this.performMove(leftX, leftY, game);
+            return;
+        }
+
+        // Left is blocked (wall is there), try straight
+        const straightX = this.x + this.dirX;
+        const straightY = this.y + this.dirY;
+        if (this.isValidMove(straightX, straightY, game)) {
+            this.performMove(straightX, straightY, game);
+            return;
+        }
+
+        // Straight blocked, try right (clockwise)
+        const rightDir = this.getRightDirection();
+        const rightX = this.x + rightDir.x;
+        const rightY = this.y + rightDir.y;
+        if (this.isValidMove(rightX, rightY, game)) {
+            this.dirX = rightDir.x;
+            this.dirY = rightDir.y;
+            this.performMove(rightX, rightY, game);
+            return;
+        }
+
+        // All directions blocked, reverse (180 degrees)
+        this.dirX = -this.dirX;
+        this.dirY = -this.dirY;
+        const reverseX = this.x + this.dirX;
+        const reverseY = this.y + this.dirY;
+        if (this.isValidMove(reverseX, reverseY, game)) {
+            this.performMove(reverseX, reverseY, game);
+        }
+        // If all directions blocked, stay in place
+    }
+
+    getLeftDirection() {
+        // Counter-clockwise rotation: Right→Up, Up→Left, Left→Down, Down→Right
+        if (this.dirX === 1 && this.dirY === 0) return { x: 0, y: -1 };  // Right → Up
+        if (this.dirX === 0 && this.dirY === -1) return { x: -1, y: 0 }; // Up → Left
+        if (this.dirX === -1 && this.dirY === 0) return { x: 0, y: 1 };  // Left → Down
+        if (this.dirX === 0 && this.dirY === 1) return { x: 1, y: 0 };   // Down → Right
+        return { x: 0, y: -1 }; // Default
+    }
+
+    getRightDirection() {
+        // Clockwise rotation: Right→Down, Down→Left, Left→Up, Up→Right
+        if (this.dirX === 1 && this.dirY === 0) return { x: 0, y: 1 };   // Right → Down
+        if (this.dirX === 0 && this.dirY === 1) return { x: -1, y: 0 };  // Down → Left
+        if (this.dirX === -1 && this.dirY === 0) return { x: 0, y: -1 }; // Left → Up
+        if (this.dirX === 0 && this.dirY === -1) return { x: 1, y: 0 };  // Up → Right
+        return { x: 0, y: 1 }; // Default
+    }
+
+    moveButterfly(game) {
+        // Boulder Dash wall-following behavior (right-hand rule for COUNTER-CLOCKWISE motion):
+        // The enemy keeps a wall on its RIGHT side and follows it.
+
+        // If in searching mode (no wall found yet), go straight until we find one
+        if (this.searchingForWall) {
+            const straightX = this.x + this.dirX;
+            const straightY = this.y + this.dirY;
+
+            // Check if there's now a wall on our right side
+            const rightDir = this.getRightDirection();
+            const rightX = this.x + rightDir.x;
+            const rightY = this.y + rightDir.y;
+            if (!this.isValidMove(rightX, rightY, game)) {
+                // Found a wall on the right! Switch to normal wall-following
+                this.searchingForWall = false;
+            }
+
+            if (this.isValidMove(straightX, straightY, game)) {
+                this.performMove(straightX, straightY, game);
+                return;
+            } else {
+                // Hit something - turn left (counter-clockwise) and continue searching
+                const leftDir = this.getLeftDirection();
+                this.dirX = leftDir.x;
+                this.dirY = leftDir.y;
+                const newX = this.x + this.dirX;
+                const newY = this.y + this.dirY;
+                if (this.isValidMove(newX, newY, game)) {
+                    this.performMove(newX, newY, game);
+                }
+                return;
+            }
+        }
+
+        // Normal wall-following mode:
+        // 1. If RIGHT is now FREE (wall ended) -> turn right and move (to keep following the wall)
+        // 2. If RIGHT is blocked, try to go STRAIGHT
+        // 3. If STRAIGHT blocked, try LEFT
+        // 4. If LEFT blocked, REVERSE
+
+        // Get right direction (clockwise from current direction)
+        const rightDir = this.getRightDirection();
+        const rightX = this.x + rightDir.x;
+        const rightY = this.y + rightDir.y;
+
+        // Check if right side is free (wall ended, we should turn right to follow it)
+        if (this.isValidMove(rightX, rightY, game)) {
+            this.dirX = rightDir.x;
+            this.dirY = rightDir.y;
+            this.performMove(rightX, rightY, game);
+            return;
+        }
+
+        // Right is blocked (wall is there), try straight
+        const straightX = this.x + this.dirX;
+        const straightY = this.y + this.dirY;
+        if (this.isValidMove(straightX, straightY, game)) {
+            this.performMove(straightX, straightY, game);
+            return;
+        }
+
+        // Straight blocked, try left (counter-clockwise)
+        const leftDir = this.getLeftDirection();
+        const leftX = this.x + leftDir.x;
+        const leftY = this.y + leftDir.y;
+        if (this.isValidMove(leftX, leftY, game)) {
+            this.dirX = leftDir.x;
+            this.dirY = leftDir.y;
+            this.performMove(leftX, leftY, game);
+            return;
+        }
+
+        // All directions blocked, reverse (180 degrees)
+        this.dirX = -this.dirX;
+        this.dirY = -this.dirY;
+        const reverseX = this.x + this.dirX;
+        const reverseY = this.y + this.dirY;
+        if (this.isValidMove(reverseX, reverseY, game)) {
+            this.performMove(reverseX, reverseY, game);
+        }
+        // If all directions blocked, stay in place
     }
 
     moveSeeker(game) {
@@ -513,10 +794,11 @@ class Enemy {
     }
 
     changeDirectionClockwise() {
-        if (this.dirX === 1) { this.dirX = 0; this.dirY = 1; }
-        else if (this.dirX === -1) { this.dirX = 0; this.dirY = -1; }
-        else if (this.dirY === 1) { this.dirX = -1; this.dirY = 0; }
-        else if (this.dirY === -1) { this.dirX = 1; this.dirY = 0; }
+        // Clockwise: Right → Down → Left → Up → Right
+        if (this.dirX === 1 && this.dirY === 0) { this.dirX = 0; this.dirY = 1; }       // Right → Down
+        else if (this.dirX === 0 && this.dirY === 1) { this.dirX = -1; this.dirY = 0; } // Down → Left
+        else if (this.dirX === -1 && this.dirY === 0) { this.dirX = 0; this.dirY = -1; } // Left → Up
+        else if (this.dirX === 0 && this.dirY === -1) { this.dirX = 1; this.dirY = 0; } // Up → Right
     }
 }
 
@@ -794,7 +1076,7 @@ class Game {
 
         // Menu Navigation
         this.menuSelectedIndex = 0;
-        this.menuButtons = ['btn-campaign', 'btn-endless', 'btn-hardcore', 'btn-load-level', 'btn-editor'];
+        this.menuButtons = ['btn-campaign', 'btn-endless', 'btn-hardcore', 'btn-rogue', 'btn-load-level', 'btn-editor', 'btn-help'];
         this.menuNavLocked = false;
 
         // Pause Menu Navigation
@@ -804,6 +1086,14 @@ class Game {
         // Load Modal Navigation
         this.loadModalSelectedIndex = 0;
         this.loadModalButtons = ['btn-load-confirm', 'btn-load-cancel'];
+
+        // Rogue Miner Mode Properties
+        this.rogueDepth = 0;
+        this.roguePerks = [];
+        this.hasShield = false;
+        this.perkChoices = [];
+        this.perkSelectedIndex = 0;
+        this.deathTimeout = null; // Timeout ID for death->menu transition
 
         // Background Stars
         this.stars = [];
@@ -851,6 +1141,17 @@ class Game {
 
         this.prevState = null; // Store state before pause
 
+        // Environmental Effects System
+        this.envEffects = {
+            darkZone: false,
+            freeze: false,
+            earthquake: false
+        };
+        this.lightRadius = 4; // Visible radius in tiles
+        this.snowflakes = []; // For freeze effect
+        this.earthquakeTimer = 0;
+        this.earthquakeInterval = 6000; // ms between quakes
+
         // Load sound preference
         const soundEnabled = localStorage.getItem('soundEnabled');
         if (soundEnabled !== null) {
@@ -891,7 +1192,7 @@ class Game {
                 if (this.isTesting) {
                     this.levelEditor.testPlay();
                 } else {
-                    this.resetGame();
+                    this.restartCurrentLevel();
                 }
             }
         });
@@ -972,6 +1273,7 @@ class Game {
         bindBtn('btn-campaign', GAME_MODES.CAMPAIGN);
         bindBtn('btn-endless', GAME_MODES.ENDLESS);
         bindBtn('btn-hardcore', GAME_MODES.HARDCORE);
+        bindBtn('btn-rogue', GAME_MODES.ROGUE);
 
         const loadBtn = document.getElementById('btn-load-level');
         if (loadBtn) {
@@ -998,6 +1300,26 @@ class Game {
                 this.updateMenuUI();
             });
             editorBtn.addEventListener('mouseenter', () => this.sound.playMenuHover());
+        }
+
+        // Help Button
+        const helpBtn = document.getElementById('btn-help');
+        if (helpBtn) {
+            helpBtn.addEventListener('click', () => {
+                this.sound.playMenuConfirm();
+                document.getElementById('help-modal').classList.remove('hidden');
+            });
+            helpBtn.addEventListener('mouseenter', () => this.sound.playMenuHover());
+        }
+
+        // Help Modal Close Button
+        const helpCloseBtn = document.getElementById('btn-help-close');
+        if (helpCloseBtn) {
+            helpCloseBtn.addEventListener('click', () => {
+                this.sound.playMenuBlip();
+                document.getElementById('help-modal').classList.add('hidden');
+            });
+            helpCloseBtn.addEventListener('mouseenter', () => this.sound.playMenuHover());
         }
 
         // Editor Export Buttons
@@ -1051,13 +1373,24 @@ class Game {
         requestAnimationFrame(this.loop);
     }
 
-    initLevel() {
+    initLevel(isRestart = false) {
         let levelDef;
         if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelData) {
             levelDef = this.customLevelData;
         } else if (this.gameMode === GAME_MODES.ENDLESS || this.gameMode === GAME_MODES.HARDCORE) {
             // Generate procedural level with increasing difficulty
             const difficulty = this.currentLevelIndex;
+            levelDef = {
+                type: 'procedural',
+                diamondsNeeded: Math.min(10 + difficulty, 30),
+                time: Math.max(150 - difficulty * 5, 60),
+                rockChance: Math.min(0.15 + difficulty * 0.01, 0.35),
+                wallChance: Math.min(0.05 + difficulty * 0.005, 0.15),
+                enemyChance: Math.min(0.02 + difficulty * 0.005, 0.1)
+            };
+        } else if (this.gameMode === GAME_MODES.ROGUE) {
+            // Rogue Miner - procedural with scaling based on depth (same as Endless)
+            const difficulty = this.rogueDepth - 1;
             levelDef = {
                 type: 'procedural',
                 diamondsNeeded: Math.min(10 + difficulty, 30),
@@ -1081,11 +1414,68 @@ class Game {
         this.fallingEntityFrames.clear(); // Clear falling duration tracking
         this.shakeTimer = 0;
         this.flashTimer = 0;
+        this.spawnBlinkTimer = 0; // Will be set for procedural modes
 
-        // Select Theme (use customLevelIndex for custom mode)
+        // Apply Rogue Miner perks
+        if (this.gameMode === GAME_MODES.ROGUE && this.roguePerks.length > 0) {
+            if (this.roguePerks.includes('timeWarp')) {
+                this.timeLeft += 30;
+            }
+            if (this.roguePerks.includes('dynamitePouch')) {
+                this.dynamiteCount += 1;
+            }
+            if (this.roguePerks.includes('hardHat')) {
+                this.hasShield = true;
+            }
+            if (this.roguePerks.includes('mineralScanner')) {
+                this.revealMapTimer = 2000; // Reveal map for 2 seconds
+            }
+        }
+
+        // Environmental Effects - random for Endless/Hardcore/Rogue, or from custom level data (preserve on restart)
+        if (!isRestart) {
+            if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelData && this.customLevelData.envEffects) {
+                // Use custom level defined environmental effects
+                const customEnv = this.customLevelData.envEffects;
+                this.envEffects.darkZone = customEnv.darkZone === true;
+                this.envEffects.freeze = customEnv.freeze === true;
+                this.envEffects.earthquake = customEnv.earthquake === true;
+            } else if (this.gameMode === GAME_MODES.ENDLESS ||
+                this.gameMode === GAME_MODES.HARDCORE ||
+                this.gameMode === GAME_MODES.ROGUE) {
+                this.envEffects.darkZone = Math.random() < 0.3;   // 30% chance
+                this.envEffects.freeze = Math.random() < 0.2;     // 20% chance
+                this.envEffects.earthquake = Math.random() < 0.25; // 25% chance
+            } else {
+                this.envEffects.darkZone = false;
+                this.envEffects.freeze = false;
+                this.envEffects.earthquake = false;
+            }
+        }
+
+        // Reset earthquake timer
+        this.earthquakeTimer = 0;
+
+        // Initialize snowflakes for freeze effect
+        if (this.envEffects.freeze) {
+            this.initSnowflakes();
+        } else {
+            this.snowflakes = [];
+        }
+
+        // Select Theme (use custom theme if specified, otherwise rotate based on level index)
         let themeIndex;
-        if (this.gameMode === GAME_MODES.CUSTOM) {
-            themeIndex = this.customLevelIndex % THEMES.length;
+        if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelData) {
+            // Check if custom level specifies a theme
+            if (typeof this.customLevelData.theme === 'number' &&
+                this.customLevelData.theme >= 0 &&
+                this.customLevelData.theme < THEMES.length) {
+                themeIndex = this.customLevelData.theme;
+            } else {
+                themeIndex = this.customLevelIndex % THEMES.length;
+            }
+        } else if (this.gameMode === GAME_MODES.ROGUE) {
+            themeIndex = (this.rogueDepth - 1) % THEMES.length;
         } else {
             themeIndex = this.currentLevelIndex % THEMES.length;
         }
@@ -1124,16 +1514,20 @@ class Game {
                         this.player.y = y;
                     } else if (char === 'X') this.grid[y][x] = TYPES.EXIT;
                     else if (char === 'E') {
-                        this.grid[y][x] = TYPES.EMPTY;
+                        this.grid[y][x] = TYPES.ENEMY;
                         this.enemies.push(new Enemy(x, y, ENEMY_TYPES.BASIC));
                     }
                     else if (char === 'P') {
-                        this.grid[y][x] = TYPES.EMPTY;
+                        this.grid[y][x] = TYPES.ENEMY;
                         this.enemies.push(new Enemy(x, y, ENEMY_TYPES.PATROLLER));
                     }
                     else if (char === 'K') {
-                        this.grid[y][x] = TYPES.EMPTY;
+                        this.grid[y][x] = TYPES.ENEMY;
                         this.enemies.push(new Enemy(x, y, ENEMY_TYPES.SEEKER));
+                    }
+                    else if (char === 'B') {
+                        this.grid[y][x] = TYPES.ENEMY;
+                        this.enemies.push(new Enemy(x, y, ENEMY_TYPES.BUTTERFLY));
                     }
                     else if (char === 'T') this.grid[y][x] = TYPES.DYNAMITE_PICKUP;
                     else if (char === 'W') this.grid[y][x] = TYPES.STEEL;
@@ -1153,7 +1547,7 @@ class Game {
                         this.grid[y][x] = TYPES.EMPTY;
                     } else if (tile === TYPES.ENEMY) {
                         this.enemies.push(new Enemy(x, y, ENEMY_TYPES.BASIC));
-                        this.grid[y][x] = TYPES.EMPTY;
+                        // Keep grid as TYPES.ENEMY for collision detection
                     }
                 }
             }
@@ -1170,33 +1564,130 @@ class Game {
                 this.grid[dy][dx] = TYPES.DYNAMITE_PICKUP;
             }
 
-            // Procedural Generation
-            this.player.x = 1;
-            this.player.y = 1;
-            this.grid[1][1] = TYPES.EMPTY;
+            // Procedural Generation with random start and exit positions
+            // Generate random start position (avoid edges)
+            const startX = Math.floor(Math.random() * (GRID_WIDTH - 4)) + 2;
+            const startY = Math.floor(Math.random() * (GRID_HEIGHT - 4)) + 2;
+            this.player.x = startX;
+            this.player.y = startY;
+            this.grid[startY][startX] = TYPES.EMPTY;
 
-            // Exit
-            this.grid[GRID_HEIGHT - 2][GRID_WIDTH - 2] = TYPES.EXIT;
-            // Clear area around exit
-            this.grid[GRID_HEIGHT - 2][GRID_WIDTH - 3] = TYPES.DIRT;
-            this.grid[GRID_HEIGHT - 3][GRID_WIDTH - 2] = TYPES.DIRT;
-            this.grid[GRID_HEIGHT - 3][GRID_WIDTH - 3] = TYPES.DIRT;
+            // Generate random exit position (minimum distance from start)
+            let exitX, exitY;
+            const minDistance = Math.max(GRID_WIDTH, GRID_HEIGHT) / 3;
+            let attempts = 0;
+            do {
+                exitX = Math.floor(Math.random() * (GRID_WIDTH - 4)) + 2;
+                exitY = Math.floor(Math.random() * (GRID_HEIGHT - 4)) + 2;
+                attempts++;
+            } while (
+                (Math.abs(exitX - startX) + Math.abs(exitY - startY) < minDistance ||
+                    (exitX === startX && exitY === startY)) &&
+                attempts < 100
+            );
 
+            // Place exit and clear area around it
+            this.grid[exitY][exitX] = TYPES.EXIT;
+            // Clear adjacent cells around exit
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const ny = exitY + dy;
+                    const nx = exitX + dx;
+                    if (ny > 0 && ny < GRID_HEIGHT - 1 && nx > 0 && nx < GRID_WIDTH - 1) {
+                        if (this.grid[ny][nx] !== TYPES.EXIT) {
+                            this.grid[ny][nx] = TYPES.DIRT;
+                        }
+                    }
+                }
+            }
+
+            // Generate level content
             for (let y = 1; y < GRID_HEIGHT - 1; y++) {
                 for (let x = 1; x < GRID_WIDTH - 1; x++) {
                     if (x === this.player.x && y === this.player.y) continue;
                     if (this.grid[y][x] === TYPES.EXIT) continue;
+                    // Skip tiles near exit (already cleared)
+                    if (Math.abs(x - exitX) <= 1 && Math.abs(y - exitY) <= 1) continue;
 
                     const rand = Math.random();
                     if (rand < levelDef.rockChance) this.grid[y][x] = TYPES.ROCK;
                     else if (rand < levelDef.rockChance + 0.05) this.grid[y][x] = TYPES.DIAMOND;
                     else if (rand < levelDef.rockChance + 0.05 + levelDef.wallChance) this.grid[y][x] = TYPES.WALL;
                     else if (rand < levelDef.rockChance + 0.05 + levelDef.wallChance + levelDef.enemyChance) {
-                        this.grid[y][x] = TYPES.EMPTY;
-                        const eType = Math.random() < 0.3 ? ENEMY_TYPES.SEEKER : (Math.random() < 0.6 ? ENEMY_TYPES.PATROLLER : ENEMY_TYPES.BASIC);
+                        this.grid[y][x] = TYPES.ENEMY;
+                        const eRand = Math.random();
+                        const eType = eRand < 0.25 ? ENEMY_TYPES.SEEKER : (eRand < 0.5 ? ENEMY_TYPES.PATROLLER : (eRand < 0.75 ? ENEMY_TYPES.BASIC : ENEMY_TYPES.BUTTERFLY));
                         this.enemies.push(new Enemy(x, y, eType));
                     } else if (rand < levelDef.rockChance + 0.05 + levelDef.wallChance + levelDef.enemyChance + 0.01) {
                         this.grid[y][x] = TYPES.DYNAMITE_PICKUP;
+                    }
+                }
+            }
+
+            // BFS pathfinding to ensure exit is reachable
+            // If not reachable, carve a path through dirt/rock
+            const isPassable = (type) => {
+                return type === TYPES.EMPTY || type === TYPES.DIRT || type === TYPES.DIAMOND ||
+                    type === TYPES.DYNAMITE_PICKUP || type === TYPES.ROCK || type === TYPES.EXIT ||
+                    type === TYPES.PLAYER;
+            };
+
+            // Check if path exists using BFS
+            const findPath = () => {
+                const visited = new Set();
+                const queue = [[startX, startY]];
+                visited.add(`${startX},${startY}`);
+
+                while (queue.length > 0) {
+                    const [cx, cy] = queue.shift();
+                    if (cx === exitX && cy === exitY) return true;
+
+                    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+                    for (const [dx, dy] of dirs) {
+                        const nx = cx + dx;
+                        const ny = cy + dy;
+                        const key = `${nx},${ny}`;
+                        if (!visited.has(key) && nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
+                            const tile = this.grid[ny][nx];
+                            // Player can pass through: empty, dirt, diamond, rock (pushable), dynamite, exit
+                            // Cannot pass through: wall, steel, enemy
+                            if (tile !== TYPES.WALL && tile !== TYPES.STEEL && tile !== TYPES.ENEMY) {
+                                visited.add(key);
+                                queue.push([nx, ny]);
+                            }
+                        }
+                    }
+                }
+                return false;
+            };
+
+            // If no path exists, carve a path
+            if (!findPath()) {
+                // Carve a simple L-shaped or direct path
+                let cx = startX, cy = startY;
+
+                // Move horizontally first
+                while (cx !== exitX) {
+                    cx += (exitX > cx) ? 1 : -1;
+                    if (this.grid[cy][cx] === TYPES.WALL || this.grid[cy][cx] === TYPES.STEEL) {
+                        this.grid[cy][cx] = TYPES.DIRT;
+                    }
+                    // Remove any enemies on the path
+                    if (this.grid[cy][cx] === TYPES.ENEMY) {
+                        this.enemies = this.enemies.filter(e => !(e.x === cx && e.y === cy));
+                        this.grid[cy][cx] = TYPES.DIRT;
+                    }
+                }
+                // Move vertically
+                while (cy !== exitY) {
+                    cy += (exitY > cy) ? 1 : -1;
+                    if (this.grid[cy][cx] === TYPES.WALL || this.grid[cy][cx] === TYPES.STEEL) {
+                        this.grid[cy][cx] = TYPES.DIRT;
+                    }
+                    // Remove any enemies on the path
+                    if (this.grid[cy][cx] === TYPES.ENEMY) {
+                        this.enemies = this.enemies.filter(e => !(e.x === cx && e.y === cy));
+                        this.grid[cy][cx] = TYPES.DIRT;
                     }
                 }
             }
@@ -1204,7 +1695,7 @@ class Game {
 
         // Clear safe zone around player (only for procedural modes)
         this.grid[this.player.y][this.player.x] = TYPES.PLAYER;
-        if (this.gameMode === GAME_MODES.ENDLESS || this.gameMode === GAME_MODES.HARDCORE) {
+        if (this.gameMode === GAME_MODES.ENDLESS || this.gameMode === GAME_MODES.HARDCORE || this.gameMode === GAME_MODES.ROGUE) {
             // Only clear space around player in procedural modes
             if (this.player.y + 1 < GRID_HEIGHT) {
                 this.grid[this.player.y + 1][this.player.x] = TYPES.EMPTY;
@@ -1225,12 +1716,65 @@ class Game {
                 this.grid[e.y][e.x] = TYPES.ENEMY;
             });
         }
+
+        // Set spawn blink timer for all modes (3 seconds)
+        this.spawnBlinkTimer = 3000;
+    }
+
+    initSnowflakes() {
+        this.snowflakes = [];
+        for (let i = 0; i < 50; i++) {
+            this.snowflakes.push({
+                x: Math.random() * this.width,
+                y: Math.random() * this.height,
+                size: Math.random() * 3 + 2,
+                speed: Math.random() * 0.5 + 0.3,
+                drift: Math.random() * 0.5 - 0.25
+            });
+        }
+    }
+
+    triggerEarthquake() {
+        // Screen shake effect
+        this.shakeTimer = 500; // Slightly longer shake
+
+        // Sound and vibration
+        this.sound.playExplosion();
+        // Add a secondary slightly delayed rumble if possible, or just vibrate longer
+        this.vibrate(400, 0.6, 0.8);
+
+        // Destabilize random rocks and diamonds (15% chance each)
+        // Iterate bottom-to-top to prevent "cascading" teleportation in a single frame
+        for (let y = GRID_HEIGHT - 2; y >= 1; y--) {
+            for (let x = 1; x < GRID_WIDTH - 1; x++) {
+                const type = this.grid[y][x];
+                if ((type === TYPES.ROCK || type === TYPES.DIAMOND) && Math.random() < 0.15) {
+                    // Check if there's empty space or DIRT below
+                    const below = this.grid[y + 1][x];
+                    if (below === TYPES.EMPTY || below === TYPES.DIRT) {
+                        // Move entity down immediately
+                        this.grid[y][x] = TYPES.EMPTY;
+                        this.grid[y + 1][x] = type;
+
+                        // Mark as falling for physics system consistency
+                        this.fallingEntities.add(`${x},${y + 1}`);
+                        this.fallingEntityFrames.set(`${x},${y + 1}`, 1);
+                    }
+                }
+            }
+        }
     }
 
     update(dt) {
         this.updateParticles();
         this.updateUI();
         this.pollGamepad();
+
+        // Update spawn blink timer
+        if (this.spawnBlinkTimer > 0) {
+            this.spawnBlinkTimer -= dt;
+            if (this.spawnBlinkTimer < 0) this.spawnBlinkTimer = 0;
+        }
 
         // FPS calculation
         this.frameCount++;
@@ -1266,6 +1810,20 @@ class Game {
                 star.x = Math.random() * this.width;
             }
         });
+
+        // Animate snowflakes (freeze effect)
+        if (this.envEffects.freeze) {
+            this.snowflakes.forEach(s => {
+                s.y += s.speed;
+                s.x += s.drift;
+                if (s.y > this.height) {
+                    s.y = -5;
+                    s.x = Math.random() * this.width;
+                }
+                if (s.x < 0) s.x = this.width;
+                if (s.x > this.width) s.x = 0;
+            });
+        }
 
         // Update Menu Particles
         if (this.state === STATE.MENU) {
@@ -1417,6 +1975,46 @@ class Game {
                 }
                 // Reset lock when no buttons pressed
                 else if (!gp.buttons[0].pressed && !gp.buttons[1].pressed) {
+                    this.gamepadActionLocked = false;
+                }
+            }
+            return;
+        }
+
+        // Perk Selection Gamepad Input (Rogue Miner)
+        if (this.state === STATE.PERK_SELECT) {
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+            if (gp) {
+                // D-pad left/right navigation
+                const leftPressed = (gp.buttons[14] && gp.buttons[14].pressed) || (gp.axes && gp.axes[0] < -0.5);
+                const rightPressed = (gp.buttons[15] && gp.buttons[15].pressed) || (gp.axes && gp.axes[0] > 0.5);
+
+                if (leftPressed && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    if (this.perkSelectedIndex > 0) {
+                        this.perkSelectedIndex--;
+                        this.updatePerkSelection();
+                        this.sound.playMenuBlip();
+                    }
+                } else if (rightPressed && !this.menuNavLocked) {
+                    this.menuNavLocked = true;
+                    if (this.perkSelectedIndex < this.perkChoices.length - 1) {
+                        this.perkSelectedIndex++;
+                        this.updatePerkSelection();
+                        this.sound.playMenuBlip();
+                    }
+                } else if (!leftPressed && !rightPressed) {
+                    this.menuNavLocked = false;
+                }
+
+                // A button - Select perk
+                if (gp.buttons[0].pressed && !this.gamepadActionLocked) {
+                    this.gamepadActionLocked = true;
+                    this.selectPerk(this.perkSelectedIndex);
+                }
+                // Reset lock when no buttons pressed
+                else if (!gp.buttons[0].pressed) {
                     this.gamepadActionLocked = false;
                 }
             }
@@ -1585,8 +2183,36 @@ class Game {
         this.player.nextDirX = dirX;
         this.player.nextDirY = dirY;
 
+        // Runner perk: faster movement (80ms instead of 100ms)
+        let moveDelay = (this.gameMode === GAME_MODES.ROGUE && this.roguePerks.includes('runner')) ? 80 : 100;
+
+        // Check if next tile is dirt for digging-related effects
+        let isDigging = false;
+        if (dirX !== 0 || dirY !== 0) {
+            const nextX = this.player.x + dirX;
+            const nextY = this.player.y + dirY;
+            if (nextX >= 0 && nextX < GRID_WIDTH && nextY >= 0 && nextY < GRID_HEIGHT) {
+                if (this.grid[nextY][nextX] === TYPES.DIRT) {
+                    isDigging = true;
+                    // Drill Bit+ perk: faster digging
+                    if (this.gameMode === GAME_MODES.ROGUE && this.roguePerks.includes('drillBit')) {
+                        moveDelay = 60;
+                    }
+                }
+            }
+        }
+
+        // Freeze effect: slower movement but faster digging
+        if (this.envEffects.freeze) {
+            if (isDigging) {
+                moveDelay = Math.min(moveDelay, 80); // Faster digging in frozen ground
+            } else {
+                moveDelay = Math.round(moveDelay * 1.3); // 30% slower movement
+            }
+        }
+
         this.player.moveTimer += dt;
-        if (this.player.moveTimer > 100) {
+        if (this.player.moveTimer > moveDelay) {
             this.movePlayer();
             this.player.moveTimer = 0;
         }
@@ -1596,6 +2222,44 @@ class Game {
         if (this.physicsTimer > 120) {
             this.updatePhysics();
             this.physicsTimer = 0;
+        }
+
+        // Earthquake effect: periodic quakes
+        if (this.envEffects.earthquake) {
+            this.earthquakeTimer += dt;
+            if (this.earthquakeTimer >= this.earthquakeInterval) {
+                this.earthquakeTimer = 0;
+                this.triggerEarthquake();
+            }
+        }
+
+        // Magnet perk: attract diamonds within 2 tiles
+        if (this.gameMode === GAME_MODES.ROGUE && this.roguePerks.includes('magnet')) {
+            for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                    if (dx === 0 && dy === 0) continue; // Skip player position
+                    const nx = this.player.x + dx;
+                    const ny = this.player.y + dy;
+                    if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
+                        if (this.grid[ny][nx] === TYPES.DIAMOND) {
+                            // Move diamond one step closer to player
+                            const stepX = Math.sign(this.player.x - nx);
+                            const stepY = Math.sign(this.player.y - ny);
+                            const targetX = nx + stepX;
+                            const targetY = ny + stepY;
+
+                            // Only move if target is empty or is player
+                            if (targetX === this.player.x && targetY === this.player.y) {
+                                // Collect the diamond
+                                this.collectDiamond(nx, ny);
+                            } else if (this.grid[targetY][targetX] === TYPES.EMPTY) {
+                                this.grid[ny][nx] = TYPES.EMPTY;
+                                this.grid[targetY][targetX] = TYPES.DIAMOND;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         this.updateEnemies(dt);
@@ -1620,7 +2284,7 @@ class Game {
                 this.ctx.translate(-(p.x + TILE_SIZE / 2), -(p.y + TILE_SIZE / 2));
 
                 // Draw slightly faded
-                this.ctx.globalAlpha = 0.55;
+                this.ctx.globalAlpha = 1.0;
                 if (p.type === TYPES.DIAMOND) {
                     this.drawDiamond(p.x, p.y);
                 } else {
@@ -1682,6 +2346,41 @@ class Game {
 
         this.particles.forEach(p => p.draw(this.ctx));
 
+        // Mineral Scanner - Highlight diamonds and enemies
+        if (this.gameMode === GAME_MODES.ROGUE && this.revealMapTimer > 0) {
+            this.revealMapTimer -= 16; // Approx decrement per frame (60fps)
+            const alpha = Math.min(1, this.revealMapTimer / 500); // Fade out last 0.5s
+
+            this.ctx.save();
+            this.ctx.globalAlpha = alpha;
+            this.ctx.lineWidth = 3;
+
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    const type = this.grid[y][x];
+                    if (type === TYPES.DIAMOND) {
+                        this.ctx.strokeStyle = '#00ffff';
+                        this.ctx.beginPath();
+                        this.ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2 + 5, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    } else if (type === TYPES.ENEMY) {
+                        this.ctx.strokeStyle = '#ff0000';
+                        this.ctx.beginPath();
+                        this.ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2 + 5, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                        // Draw line to enemy
+                        this.ctx.lineWidth = 1;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.player.x * TILE_SIZE + TILE_SIZE / 2, this.player.y * TILE_SIZE + TILE_SIZE / 2);
+                        this.ctx.lineTo(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                        this.ctx.stroke();
+                        this.ctx.lineWidth = 3;
+                    }
+                }
+            }
+            this.ctx.restore();
+        }
+
         // Demo Mode Overlay
         if (this.state === STATE.DEMO) {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
@@ -1703,6 +2402,36 @@ class Game {
                 this.ctx.fillText('PRESS ANY KEY', this.width / 2, this.height / 2 + 40);
             }
             this.ctx.restore();
+        }
+
+        // Environmental Effect: Dark Zone
+        if (this.envEffects.darkZone && this.state === STATE.PLAYING) {
+            const px = this.player.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = this.player.y * TILE_SIZE + TILE_SIZE / 2;
+            const r = this.lightRadius * TILE_SIZE;
+
+            const gradient = this.ctx.createRadialGradient(px, py, r * 0.5, px, py, r * 1.5);
+            gradient.addColorStop(0, 'rgba(0,0,0,0)');
+            gradient.addColorStop(0.6, 'rgba(0,0,0,0.7)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0.95)');
+
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(0, 0, this.width, this.height);
+        }
+
+        // Environmental Effect: Freeze
+        if (this.envEffects.freeze && this.state === STATE.PLAYING) {
+            // Blue overlay
+            this.ctx.fillStyle = 'rgba(100, 180, 255, 0.08)';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+
+            // Snowflakes
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.snowflakes.forEach(s => {
+                this.ctx.beginPath();
+                this.ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            });
         }
 
         this.ctx.restore();
@@ -1893,6 +2622,9 @@ class Game {
             } else if (enemy.type === ENEMY_TYPES.PATROLLER) {
                 color = this.currentTheme.enemyPatroller;
                 eyeColor = '#ffffff'; // White eyes
+            } else if (enemy.type === ENEMY_TYPES.BUTTERFLY) {
+                color = this.currentTheme.enemyButterfly;
+                eyeColor = '#00ffff'; // Cyan eyes
             }
         }
 
@@ -1902,7 +2634,7 @@ class Game {
 
         // Draw different shapes based on type
         if (type === ENEMY_TYPES.BASIC) {
-            // BASIC: Circle/Oval (butterfly/bug style)
+            // BASIC: Circle/Oval (firefly style)
             this.ctx.beginPath();
             this.ctx.ellipse(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE / 2 - 6, TILE_SIZE / 2 - 4, 0, 0, Math.PI * 2);
             this.ctx.fill();
@@ -1913,6 +2645,22 @@ class Game {
             this.ctx.lineTo(x + TILE_SIZE - 6, y + TILE_SIZE - 6); // Bottom right
             this.ctx.lineTo(x + 6, y + TILE_SIZE - 6); // Bottom left
             this.ctx.closePath();
+            this.ctx.fill();
+        } else if (type === ENEMY_TYPES.BUTTERFLY) {
+            // BUTTERFLY: Butterfly shape with wings
+            const cx = x + TILE_SIZE / 2;
+            const cy = y + TILE_SIZE / 2;
+            // Body
+            this.ctx.beginPath();
+            this.ctx.ellipse(cx, cy, 3, TILE_SIZE / 2 - 6, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+            // Left wing
+            this.ctx.beginPath();
+            this.ctx.ellipse(cx - 8, cy - 2, 6, 8, -0.3, 0, Math.PI * 2);
+            this.ctx.fill();
+            // Right wing
+            this.ctx.beginPath();
+            this.ctx.ellipse(cx + 8, cy - 2, 6, 8, 0.3, 0, Math.PI * 2);
             this.ctx.fill();
         } else {
             // PATROLLER: Square (original, patrol guard)
@@ -1928,6 +2676,10 @@ class Game {
             // Triangle eyes - higher up
             this.ctx.fillRect(x + 10 + eyeOffset, y + 12, 3, 3);
             this.ctx.fillRect(x + 19 + eyeOffset, y + 12, 3, 3);
+        } else if (type === ENEMY_TYPES.BUTTERFLY) {
+            // Butterfly eyes - on body, smaller
+            this.ctx.fillRect(x + 13 + eyeOffset, y + 10, 2, 2);
+            this.ctx.fillRect(x + 17 + eyeOffset, y + 10, 2, 2);
         } else {
             // Circle and Square eyes - centered
             this.ctx.fillRect(x + 8 + eyeOffset, y + 10, 4, 4);
@@ -1936,6 +2688,18 @@ class Game {
     }
 
     drawPlayer(x, y) {
+        // Spawn blink effect - skip drawing every other frame during blink period
+        if (this.spawnBlinkTimer > 0) {
+            const blinkPhase = Math.floor(this.globalTime / 100) % 2;
+            if (blinkPhase === 0) {
+                // Draw a bright highlight around player position instead
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.globalAlpha = 0.5;
+                this.ctx.fillRect(x - 4, y - 4, TILE_SIZE + 8, TILE_SIZE + 8);
+                this.ctx.globalAlpha = 1.0;
+            }
+        }
+
         this.ctx.fillStyle = this.currentTheme[TYPES.PLAYER];
         this.ctx.shadowBlur = 10;
         this.ctx.shadowColor = this.currentTheme[TYPES.PLAYER];
@@ -2065,6 +2829,91 @@ class Game {
                 }
             }
 
+            // Perk Selection keyboard handling (Rogue Miner)
+            if (this.state === STATE.PERK_SELECT && isKeyDown) {
+                if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                    e.preventDefault();
+                    if (this.perkSelectedIndex > 0) {
+                        this.perkSelectedIndex--;
+                        this.updatePerkSelection();
+                        this.sound.playMenuBlip();
+                    }
+                    return;
+                }
+                if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                    e.preventDefault();
+                    if (this.perkSelectedIndex < this.perkChoices.length - 1) {
+                        this.perkSelectedIndex++;
+                        this.updatePerkSelection();
+                        this.sound.playMenuBlip();
+                    }
+                    return;
+                }
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.selectPerk(this.perkSelectedIndex);
+                    return;
+                }
+            }
+
+            // Main Menu keyboard navigation
+            if (this.state === STATE.MENU && isKeyDown) {
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                    e.preventDefault();
+                    this.menuSelectedIndex = (this.menuSelectedIndex - 1 + this.menuButtons.length) % this.menuButtons.length;
+                    this.updateMenuSelection();
+                    this.sound.playMenuBlip();
+                    return;
+                }
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+                    e.preventDefault();
+                    this.menuSelectedIndex = (this.menuSelectedIndex + 1) % this.menuButtons.length;
+                    this.updateMenuSelection();
+                    this.sound.playMenuBlip();
+                    return;
+                }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selectedBtn = document.getElementById(this.menuButtons[this.menuSelectedIndex]);
+                    if (selectedBtn && !selectedBtn.disabled) {
+                        selectedBtn.click();
+                    }
+                    return;
+                }
+            }
+
+            // Pause Menu keyboard navigation
+            if (this.state === STATE.PAUSED && isKeyDown) {
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                    e.preventDefault();
+                    this.pauseSelectedIndex = (this.pauseSelectedIndex - 1 + this.pauseButtons.length) % this.pauseButtons.length;
+                    this.updatePauseSelection();
+                    this.sound.playMenuBlip();
+                    return;
+                }
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+                    e.preventDefault();
+                    this.pauseSelectedIndex = (this.pauseSelectedIndex + 1) % this.pauseButtons.length;
+                    this.updatePauseSelection();
+                    this.sound.playMenuBlip();
+                    return;
+                }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selectedBtnId = this.pauseButtons[this.pauseSelectedIndex];
+                    // Special handling for fullscreen - needs direct API call
+                    if (selectedBtnId === 'btn-fullscreen') {
+                        this.toggleFullscreen();
+                    } else {
+                        const selectedBtn = document.getElementById(selectedBtnId);
+                        if (selectedBtn) {
+                            selectedBtn.click();
+                        }
+                    }
+                    return;
+                }
+            }
+
             // ESC - Pause/Unpause
             if (e.key === 'Escape' && isKeyDown) {
                 if (this.state === STATE.PLAYING) {
@@ -2171,6 +3020,13 @@ class Game {
                     if (this.isTesting) {
                         this.levelEditor.testPlay();
                     } else if (this.state === STATE.GAMEOVER) {
+                        // In Hardcore/Rogue, prevent restart and go to menu
+                        if (this.gameMode === GAME_MODES.HARDCORE || this.gameMode === GAME_MODES.ROGUE) {
+                            this.state = STATE.MENU;
+                            this.sound.stopGameMusic();
+                            this.updateMenuUI();
+                            return;
+                        }
                         // Game over: restart current level only (keep pack progress)
                         this.restartCurrentLevel();
                     } else if (this.state === STATE.WIN) {
@@ -2206,6 +3062,15 @@ class Game {
                     }
 
                     document.getElementById('message-overlay').classList.add('hidden');
+
+                    // In Hardcore/Rogue, prevent restart and go to menu
+                    if (this.gameMode === GAME_MODES.HARDCORE || this.gameMode === GAME_MODES.ROGUE) {
+                        this.state = STATE.MENU;
+                        this.sound.stopGameMusic();
+                        this.updateMenuUI();
+                        return;
+                    }
+
                     // GAMEOVER: restart current level only (keep pack progress)
                     this.restartCurrentLevel();
                 } else if (isKeyDown && this.state === STATE.WIN) {
@@ -2249,11 +3114,28 @@ class Game {
                 this.score = 0;
                 this.initLevel();
             } else if (mode === GAME_MODES.ENDLESS || mode === GAME_MODES.HARDCORE) {
+                // Clear any pending death timeout from previous run
+                if (this.deathTimeout) {
+                    clearTimeout(this.deathTimeout);
+                    this.deathTimeout = null;
+                }
                 this.currentLevelIndex = 0; // Start from level 1 (0-indexed)
                 this.score = 0;
                 this.initLevel();
             } else if (mode === GAME_MODES.CUSTOM) {
                 // Custom level pack
+                this.score = 0;
+                this.initLevel();
+            } else if (mode === GAME_MODES.ROGUE) {
+                // Rogue Miner mode - procedural with perks
+                // Clear any pending death timeout from previous run
+                if (this.deathTimeout) {
+                    clearTimeout(this.deathTimeout);
+                    this.deathTimeout = null;
+                }
+                this.rogueDepth = 1;
+                this.roguePerks = [];
+                this.hasShield = false;
                 this.score = 0;
                 this.initLevel();
             }
@@ -2674,6 +3556,20 @@ class Game {
         prepared.title = levelData.title || levelData.name || null;
         prepared.description = levelData.description || levelData.desc || null;
 
+        // Optional theme (0-7)
+        if (typeof levelData.theme === 'number') {
+            prepared.theme = Math.floor(levelData.theme) % THEMES.length;
+        }
+
+        // Optional environmental effects
+        if (levelData.envEffects) {
+            prepared.envEffects = {
+                darkZone: levelData.envEffects.darkZone === true,
+                freeze: levelData.envEffects.freeze === true,
+                earthquake: levelData.envEffects.earthquake === true
+            };
+        }
+
         return prepared;
     }
 
@@ -2732,7 +3628,7 @@ class Game {
 
     // Restart only the current level (for game over - doesn't reset pack progress)
     restartCurrentLevel() {
-        this.initLevel();
+        this.initLevel(true); // true = isRestart, preserve env effects
         this.state = STATE.PLAYING;
         this.sound.stopGameMusic();
         this.sound.startGameMusic();
@@ -3142,7 +4038,14 @@ class Game {
         document.getElementById('score').innerText = this.score.toString().padStart(5, '0');
         document.getElementById('diamonds').innerText = `${this.diamondsCollected}/${this.diamondsNeeded}`;
         document.getElementById('time').innerText = Math.floor(this.timeLeft).toString().padStart(3, '0');
-        document.getElementById('level').innerText = this.currentLevelIndex + 1;
+
+        // Show rogueDepth in Rogue mode, otherwise currentLevelIndex
+        if (this.gameMode === GAME_MODES.ROGUE) {
+            document.getElementById('level').innerText = this.rogueDepth;
+        } else {
+            document.getElementById('level').innerText = this.currentLevelIndex + 1;
+        }
+
         document.getElementById('dynamite').innerText = this.dynamiteCount;
     }
 
@@ -3206,6 +4109,15 @@ class Game {
                         }
 
                         document.getElementById('message-overlay').classList.add('hidden');
+
+                        // In Hardcore/Rogue, prevent restart and go to menu
+                        if (this.gameMode === GAME_MODES.HARDCORE || this.gameMode === GAME_MODES.ROGUE) {
+                            this.state = STATE.MENU;
+                            this.sound.stopGameMusic();
+                            this.updateMenuUI();
+                            return;
+                        }
+
                         // GAMEOVER: restart current level only (keep pack progress)
                         this.restartCurrentLevel();
                     } else if (this.state === STATE.WIN) {
@@ -3361,7 +4273,13 @@ class Game {
 
     collectDiamond(x, y) {
         this.grid[y][x] = TYPES.EMPTY;
-        this.score += 10;
+
+        // Lucky Charm perk: +50% diamond score
+        let diamondScore = 10;
+        if (this.gameMode === GAME_MODES.ROGUE && this.roguePerks.includes('luckyCharm')) {
+            diamondScore = 15;
+        }
+        this.score += diamondScore;
         this.diamondsCollected++;
 
         // Trigger Flash if Exit opens
@@ -3545,6 +4463,25 @@ class Game {
             }
         }
 
+        // Process active dynamite falling (bombs fall like rocks)
+        for (const bomb of this.bombs) {
+            const belowY = bomb.y + 1;
+            if (belowY < GRID_HEIGHT) {
+                const below = this.grid[belowY][bomb.x];
+                // Bomb falls through EMPTY spaces
+                if (below === TYPES.EMPTY) {
+                    // Clear old position (only if it was DYNAMITE_ACTIVE)
+                    if (this.grid[bomb.y][bomb.x] === TYPES.DYNAMITE_ACTIVE) {
+                        this.grid[bomb.y][bomb.x] = TYPES.EMPTY;
+                    }
+                    // Move bomb down
+                    bomb.y = belowY;
+                    this.grid[bomb.y][bomb.x] = TYPES.DYNAMITE_ACTIVE;
+                }
+                // Otherwise bomb stays in place (on rock, diamond, wall, etc.)
+            }
+        }
+
         // Process rocks falling
         // We iterate from bottom to top to handle stacking correctly
         // We use a temporary set for this frame to avoid double updating
@@ -3617,8 +4554,8 @@ class Game {
                             this.grid[enemyY][enemyX] = TYPES.EMPTY; // Enemy is gone
 
                             // Different effects based on enemy type
-                            if (enemy.type === ENEMY_TYPES.BASIC) {
-                                // BASIC: Spawn 3x3 diamonds - convert ALL destructible tiles
+                            if (enemy.type === ENEMY_TYPES.BUTTERFLY) {
+                                // BUTTERFLY: Spawn 3x3 diamonds - convert ALL destructible tiles
                                 for (let dy = -1; dy <= 1; dy++) {
                                     for (let dx = -1; dx <= 1; dx++) {
                                         const nx = enemyX + dx;
@@ -3649,7 +4586,7 @@ class Game {
                                     }
                                 }
                             } else {
-                                // SEEKER or PATROLLER: Explode 3x3 area
+                                // BASIC, SEEKER, PATROLLER: Explode 3x3 area (destroy tiles)
                                 for (let dy = -1; dy <= 1; dy++) {
                                     for (let dx = -1; dx <= 1; dx++) {
                                         const nx = enemyX + dx;
@@ -3659,10 +4596,24 @@ class Game {
                                         if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
                                             const tile = this.grid[ny][nx];
 
+                                            // Kill player if in explosion radius
+                                            if (this.player.x === nx && this.player.y === ny) {
+                                                this.die();
+                                            }
+
                                             // Destroy most things (like dynamite explosion)
                                             if (tile === TYPES.DIRT || tile === TYPES.ROCK || tile === TYPES.DIAMOND || tile === TYPES.WALL) {
                                                 this.grid[ny][nx] = TYPES.EMPTY;
                                                 this.spawnParticles(nx * TILE_SIZE + TILE_SIZE / 2, ny * TILE_SIZE + TILE_SIZE / 2, '#ff4400', 10);
+                                            }
+
+                                            // Kill other enemies in the area
+                                            if (tile === TYPES.ENEMY) {
+                                                const otherEnemyIndex = this.enemies.findIndex(e => e.x === nx && e.y === ny);
+                                                if (otherEnemyIndex !== -1) {
+                                                    this.enemies.splice(otherEnemyIndex, 1);
+                                                    this.grid[ny][nx] = TYPES.EMPTY;
+                                                }
                                             }
                                         }
                                     }
@@ -3731,8 +4682,14 @@ class Game {
         this.grid[y][x] = TYPES.EMPTY;
 
         if (enemy.type === ENEMY_TYPES.BASIC) {
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
+            // Sonic Boom perk: larger explosion radius (5x5)
+            let explosionRadius = 1;
+            if (this.gameMode === GAME_MODES.ROGUE && this.roguePerks.includes('sonicBoom')) {
+                explosionRadius = 2;
+            }
+
+            for (let dy = -explosionRadius; dy <= explosionRadius; dy++) {
+                for (let dx = -explosionRadius; dx <= explosionRadius; dx++) {
                     const nx = x + dx;
                     const ny = y + dy;
 
@@ -3792,6 +4749,16 @@ class Game {
     die() {
         if (this.state === STATE.GAMEOVER) return;
 
+        // Hard Hat perk - absorb one hit per level
+        if (this.gameMode === GAME_MODES.ROGUE && this.hasShield) {
+            this.hasShield = false;
+            this.shakeTimer = 200;
+            this.flashTimer = 100;
+            this.spawnParticles(this.player.x * TILE_SIZE + TILE_SIZE / 2, this.player.y * TILE_SIZE + TILE_SIZE / 2, '#00ffff', 30);
+            this.sound.playTone(800, 'square', 0.15, 0.5); // Shield break sound
+            return; // Survive the hit
+        }
+
         this.state = STATE.GAMEOVER;
         this.sound.stopGameMusic();
 
@@ -3827,7 +4794,18 @@ class Game {
 
         if (this.gameMode === GAME_MODES.HARDCORE) {
             this.showMessage("GAME OVER", "Hardcore Mode: Returning to Menu...");
-            setTimeout(() => {
+            this.deathTimeout = setTimeout(() => {
+                this.state = STATE.MENU;
+                this.sound.stopGameMusic();
+                document.getElementById('message-overlay').classList.add('hidden');
+                this.updateMenuUI();
+            }, 3000);
+            return;
+        }
+
+        if (this.gameMode === GAME_MODES.ROGUE) {
+            this.showMessage("GAME OVER", `Depth Reached: ${this.rogueDepth} | Score: ${this.score}`);
+            this.deathTimeout = setTimeout(() => {
                 this.state = STATE.MENU;
                 this.sound.stopGameMusic();
                 document.getElementById('message-overlay').classList.add('hidden');
@@ -3859,6 +4837,13 @@ class Game {
 
         this.score += Math.floor(this.timeLeft) * 10; // Time bonus
         this.updateUI();
+
+        // Handle Rogue Miner Mode - show perk selection
+        if (this.gameMode === GAME_MODES.ROGUE) {
+            this.sound.playWin();
+            this.showPerkSelection();
+            return;
+        }
 
         // Handle Custom Level Pack progression
         if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelPack) {
@@ -3902,8 +4887,14 @@ class Game {
 
         this.currentLevelIndex++;
 
-        if (this.currentLevelIndex < LEVELS.length) {
-            this.showMessage("LEVEL COMPLETE", "Get Ready for Next Level...");
+        // For Endless and Hardcore modes, always continue to next procedural level
+        // Only Campaign mode should end when LEVELS.length is reached
+        const isEndlessModeActive = (this.gameMode === GAME_MODES.ENDLESS || this.gameMode === GAME_MODES.HARDCORE);
+
+        if (isEndlessModeActive || this.currentLevelIndex < LEVELS.length) {
+            const levelNum = this.currentLevelIndex + 1;
+            const message = isEndlessModeActive ? `Level ${levelNum} Complete!` : "LEVEL COMPLETE";
+            this.showMessage(message, "Get Ready for Next Level...");
             this.sound.playWin();
             setTimeout(() => {
                 this.initLevel();
@@ -3921,6 +4912,83 @@ class Game {
         }
     }
 
+    // Rogue Miner Perk Selection Methods
+    showPerkSelection() {
+        // Pick 3 random perks (excluding already owned)
+        const availablePerks = PERKS.filter(p => !this.roguePerks.includes(p.id));
+
+        // Shuffle and pick 3
+        const shuffled = availablePerks.sort(() => Math.random() - 0.5);
+        this.perkChoices = shuffled.slice(0, 3);
+        this.perkSelectedIndex = 0;
+
+        // If less than 3 available, just use what we have
+        if (this.perkChoices.length === 0) {
+            // All perks collected, skip to next level
+            this.advanceRogueLevel();
+            return;
+        }
+
+        // Update UI
+        const overlay = document.getElementById('perk-select-overlay');
+        const depthInfo = document.getElementById('perk-depth-info');
+        depthInfo.innerText = `Depth ${this.rogueDepth} Complete!`;
+
+        // Update each card
+        for (let i = 0; i < 3; i++) {
+            const card = document.getElementById(`perk-card-${i}`);
+            if (i < this.perkChoices.length) {
+                const perk = this.perkChoices[i];
+                card.querySelector('.perk-icon').innerText = perk.icon;
+                card.querySelector('.perk-name').innerText = perk.name;
+                card.querySelector('.perk-desc').innerText = perk.description;
+                card.classList.remove('hidden');
+                card.onclick = () => this.selectPerk(i);
+                card.onmouseenter = () => {
+                    this.perkSelectedIndex = i;
+                    this.updatePerkSelection();
+                    this.sound.playMenuHover();
+                };
+            } else {
+                card.classList.add('hidden');
+            }
+        }
+
+        this.state = STATE.PERK_SELECT;
+        overlay.classList.remove('hidden');
+        this.updatePerkSelection();
+    }
+
+    selectPerk(index) {
+        if (index >= this.perkChoices.length) return;
+
+        const perk = this.perkChoices[index];
+        this.roguePerks.push(perk.id);
+
+        this.sound.playMenuConfirm();
+
+        // Hide overlay
+        document.getElementById('perk-select-overlay').classList.add('hidden');
+
+        // Advance to next level
+        this.advanceRogueLevel();
+    }
+
+    advanceRogueLevel() {
+        this.rogueDepth++;
+        this.initLevel();
+        this.state = STATE.PLAYING;
+        this.sound.startGameMusic();
+        document.getElementById('message-overlay').classList.add('hidden');
+    }
+
+    updatePerkSelection() {
+        const cards = document.querySelectorAll('.perk-card');
+        cards.forEach((card, index) => {
+            card.classList.toggle('selected', index === this.perkSelectedIndex);
+        });
+    }
+
     showMessage(title, subtitle) {
         const overlay = document.getElementById('message-overlay');
         const titleEl = document.getElementById('message-title');
@@ -3928,6 +4996,14 @@ class Game {
 
         titleEl.innerText = title;
         subEl.innerText = subtitle;
+
+        // Add keyboard-hint class if subtitle contains keyboard-specific instructions
+        if (subtitle.includes('Press ')) {
+            subEl.classList.add('keyboard-hint');
+        } else {
+            subEl.classList.remove('keyboard-hint');
+        }
+
         overlay.classList.remove('hidden');
     }
 
