@@ -901,19 +901,113 @@ class SoundManager {
         }
     }
 
-    startGameMusic() {
-        console.log('startGameMusic called', 'Enabled:', this.enabled, 'Interval:', this.musicInterval);
+    startGameMusic(themeIndex = 0) {
+        console.log('startGameMusic called', 'Enabled:', this.enabled, 'Interval:', this.musicInterval, 'Theme:', themeIndex);
         if (!this.enabled || this.musicInterval) return;
         if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
 
-        const bassLine = [110, 110, 220, 110, 130.81, 110, 164.81, 146.83]; // A2, A2, A3, A2, C3, A2, E3, D3
+        // Theme-specific music configurations
+        const themeMusic = [
+            // Theme 0: Neon Blue (Cyberpunk) - Dark, atmospheric, electronic
+            {
+                bassLine: [82.41, 82.41, 110, 82.41, 98, 82.41, 73.42, 82.41], // E2 based, dark minor
+                tempo: 220,
+                waveform: 'sawtooth',
+                arpEnabled: true,
+                arpNotes: [329.63, 392, 493.88, 392], // E4, G4, B4
+                arpWave: 'square',
+                volume: 0.12
+            },
+            // Theme 1: Neon Pink (Synthwave) - Upbeat 80s, bright and energetic
+            {
+                bassLine: [110, 130.81, 146.83, 130.81, 110, 98, 110, 130.81], // A2 major progression
+                tempo: 180,
+                waveform: 'sawtooth',
+                arpEnabled: true,
+                arpNotes: [440, 554.37, 659.25, 554.37], // A4, C#5, E5
+                arpWave: 'square',
+                volume: 0.15
+            },
+            // Theme 2: Neon Green (Matrix) - Mysterious, digital, glitchy
+            {
+                bassLine: [73.42, 73.42, 87.31, 73.42, 65.41, 73.42, 98, 87.31], // D2 minor, mysterious
+                tempo: 200,
+                waveform: 'triangle',
+                arpEnabled: true,
+                arpNotes: [293.66, 349.23, 440, 349.23], // D4, F4, A4
+                arpWave: 'square',
+                volume: 0.1
+            },
+            // Theme 3: Neon Orange (Inferno) - Aggressive, fast, intense
+            {
+                bassLine: [98, 98, 130.81, 98, 110, 130.81, 146.83, 98], // G2 power, aggressive
+                tempo: 150,
+                waveform: 'sawtooth',
+                arpEnabled: true,
+                arpNotes: [392, 493.88, 587.33, 493.88], // G4, B4, D5
+                arpWave: 'sawtooth',
+                volume: 0.18
+            },
+            // Theme 4: Ice/Frozen - Slow, ethereal, cold and crystalline
+            {
+                bassLine: [130.81, 146.83, 164.81, 146.83, 130.81, 123.47, 130.81, 146.83], // C3 major, airy
+                tempo: 320,
+                waveform: 'sine',
+                arpEnabled: true,
+                arpNotes: [523.25, 659.25, 783.99, 659.25], // C5, E5, G5 - high and sparkly
+                arpWave: 'sine',
+                volume: 0.08
+            },
+            // Theme 5: Gold/Luxury - Majestic, rich, royal fanfare
+            {
+                bassLine: [87.31, 110, 130.81, 110, 87.31, 98, 110, 130.81], // F2 major, regal
+                tempo: 240,
+                waveform: 'sawtooth',
+                arpEnabled: true,
+                arpNotes: [349.23, 440, 523.25, 440], // F4, A4, C5
+                arpWave: 'triangle',
+                volume: 0.12
+            },
+            // Theme 6: Toxic/Acid - Chaotic, distorted, harsh
+            {
+                bassLine: [55, 61.74, 55, 73.42, 55, 65.41, 55, 82.41], // A1 chromatic, unstable
+                tempo: 170,
+                waveform: 'sawtooth',
+                arpEnabled: true,
+                arpNotes: [220, 277.18, 329.63, 277.18], // A3, C#4, E4 - dissonant
+                arpWave: 'square',
+                volume: 0.14
+            },
+            // Theme 7: Vaporwave - Dreamy, slowed down, nostalgic
+            {
+                bassLine: [146.83, 130.81, 110, 130.81, 146.83, 164.81, 146.83, 130.81], // D3 major 7, dreamy
+                tempo: 350,
+                waveform: 'triangle',
+                arpEnabled: true,
+                arpNotes: [587.33, 698.46, 880, 698.46], // D5, F5, A5 - ethereal
+                arpWave: 'sine',
+                volume: 0.1
+            }
+        ];
+
+        const music = themeMusic[themeIndex % themeMusic.length];
         let noteIndex = 0;
+        let arpIndex = 0;
 
         this.musicInterval = setInterval(() => {
-            const freq = bassLine[noteIndex];
-            this.playTone(freq, 'sawtooth', 0.1, 0.15); // Short bass notes
-            noteIndex = (noteIndex + 1) % bassLine.length;
-        }, 250);
+            // Bass line
+            const freq = music.bassLine[noteIndex];
+            this.playTone(freq, music.waveform, 0.1, music.volume);
+
+            // Arpeggio (every other note for most themes)
+            if (music.arpEnabled && noteIndex % 2 === 0) {
+                const arpFreq = music.arpNotes[arpIndex % music.arpNotes.length];
+                this.playTone(arpFreq, music.arpWave, 0.05, music.volume * 0.4);
+                arpIndex++;
+            }
+
+            noteIndex = (noteIndex + 1) % music.bassLine.length;
+        }, music.tempo);
     }
 
     stopGameMusic() {
@@ -1072,6 +1166,7 @@ class Game {
         this.flashTimer = 0; // Flash effect for exit open
         this.globalTime = 0;
         this.currentTheme = THEMES[0];
+        this.currentThemeIndex = 0;
         this.highScorePending = false;
 
         // Menu Navigation
@@ -1480,7 +1575,20 @@ class Game {
             themeIndex = this.currentLevelIndex % THEMES.length;
         }
         this.currentTheme = THEMES[themeIndex];
+        this.currentThemeIndex = themeIndex;
         COLORS = this.currentTheme;
+
+        // Select Music Theme (can be different from visual theme)
+        // Check if custom level specifies a separate music theme
+        if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelData &&
+            typeof this.customLevelData.musicTheme === 'number' &&
+            this.customLevelData.musicTheme >= 0 &&
+            this.customLevelData.musicTheme < 8) { // 8 music themes available
+            this.currentMusicThemeIndex = this.customLevelData.musicTheme;
+        } else {
+            // Use visual theme for music by default
+            this.currentMusicThemeIndex = themeIndex;
+        }
 
         // Generate Grid
         this.grid = [];
@@ -3148,7 +3256,7 @@ class Game {
         this.sound.unlock().then(() => {
             console.log('Audio unlocked, starting music');
             this.sound.stopMenuMusic();
-            this.sound.startGameMusic();
+            this.sound.startGameMusic(this.currentMusicThemeIndex);
         }).catch(e => console.error('Audio unlock failed:', e));
 
         // Show level intro for custom levels with title/description
@@ -3623,7 +3731,7 @@ class Game {
         this.initLevel();
         this.state = STATE.PLAYING;
         this.sound.stopGameMusic();
-        this.sound.startGameMusic();
+        this.sound.startGameMusic(this.currentMusicThemeIndex);
     }
 
     // Restart only the current level (for game over - doesn't reset pack progress)
@@ -3631,7 +3739,7 @@ class Game {
         this.initLevel(true); // true = isRestart, preserve env effects
         this.state = STATE.PLAYING;
         this.sound.stopGameMusic();
-        this.sound.startGameMusic();
+        this.sound.startGameMusic(this.currentMusicThemeIndex);
     }
 
     resetIdle() {
@@ -4978,7 +5086,7 @@ class Game {
         this.rogueDepth++;
         this.initLevel();
         this.state = STATE.PLAYING;
-        this.sound.startGameMusic();
+        this.sound.startGameMusic(this.currentMusicThemeIndex);
         document.getElementById('message-overlay').classList.add('hidden');
     }
 
