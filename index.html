@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Neon Dash</title>
     <link rel="stylesheet" href="style.css?v=107">
-    <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="mobile.css?v=116">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 </head>
 
@@ -246,6 +246,19 @@
                     <button id="btn-copy-level" class="export-btn">📋 Copy JSON</button>
                     <button id="btn-download-level" class="export-btn">💾 Download</button>
                 </div>
+                <!-- Mobile Editor Toolbar -->
+                <div id="editor-mobile-toolbar" class="mobile-only">
+                    <button id="editor-btn-exit" class="editor-mobile-btn">✖<br>EXIT</button>
+                    <button id="editor-btn-erase" class="editor-mobile-btn">🗑️<br>ERASE</button>
+                    <button id="editor-btn-enemy" class="editor-mobile-btn">👾<br><span
+                            id="mob-enemy-type">BASIC</span></button>
+                    <button id="editor-btn-grid" class="editor-mobile-btn">⊞<br>GRID</button>
+                    <button id="editor-btn-test" class="editor-mobile-btn">▶<br>TEST</button>
+                    <button id="editor-btn-save" class="editor-mobile-btn">💾<br>SAVE</button>
+                    <button id="editor-btn-load" class="editor-mobile-btn">📂<br>LOAD</button>
+                    <button id="editor-btn-copy" class="editor-mobile-btn">📋<br>COPY</button>
+                    <button id="editor-btn-download" class="editor-mobile-btn">⬇️<br>JSON</button>
+                </div>
             </div>
 
             <!-- Mobile Touch Controls -->
@@ -265,9 +278,9 @@
         </div>
     </div>
 
-    <script src="levelEditor.js?v=111"></script>
+    <script src="levelEditor.js?v=112"></script>
     <script src="game.js?v=124"></script>
-    <script src="mobile.js?v=107"></script>
+    <script src="mobile.js?v=111"></script>
 </body>
 
 </html>

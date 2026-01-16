@@ -1,8 +1,13 @@
 // Mobile Controls - Final Clean Version
 (function () {
-    window.addEventListener('load', () => {
+    // Wait for game object to be available (retry mechanism for race condition)
+    function initMobileControls() {
         const game = window.game;
-        if (!game) return;
+        if (!game) {
+            // Retry after 100ms if game not ready yet
+            setTimeout(initMobileControls, 100);
+            return;
+        }
 
         // Mobile device detection using User Agent (most reliable method)
         function isMobileDevice() {
@@ -166,5 +171,113 @@
                 lastS = s;
             }, 100);
         }
-    });
+
+        // ===== MOBILE EDITOR TOOLBAR =====
+        // Always register handlers - visibility controlled by CSS
+        const editorToolbar = document.getElementById('editor-mobile-toolbar');
+        if (editorToolbar) {
+            // Helper for button handlers with debounce to prevent double-triggering
+            const addEditorBtn = (id, action) => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    let lastTrigger = 0;
+                    const handler = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const now = Date.now();
+                        if (now - lastTrigger < 100) return; // Debounce 100ms
+                        lastTrigger = now;
+                        vib(15);
+                        action(btn);
+                    };
+                    btn.addEventListener('touchstart', handler, { passive: false });
+                    btn.addEventListener('mousedown', handler);
+                    btn.addEventListener('click', handler); // For desktop browser emulation
+                }
+            };
+
+            // Exit button
+            addEditorBtn('editor-btn-exit', () => {
+                if (game.state === 7 && game.levelEditor) { // STATE.EDITOR = 7
+                    game.state = 0; // STATE.MENU
+                    document.getElementById('editor-overlay').classList.add('hidden');
+                    document.getElementById('menu-screen').classList.remove('hidden');
+                }
+            });
+
+            // Erase mode toggle
+            addEditorBtn('editor-btn-erase', (btn) => {
+                if (game.levelEditor) {
+                    game.levelEditor.eraseMode = !game.levelEditor.eraseMode;
+                    btn.classList.toggle('active', game.levelEditor.eraseMode);
+                }
+            });
+
+            // Enemy type cycle
+            addEditorBtn('editor-btn-enemy', () => {
+                if (game.levelEditor) {
+                    const editor = game.levelEditor;
+                    const types = [0, 1, 2, 3]; // BASIC, SEEKER, PATROLLER, BUTTERFLY
+                    const names = ['BASIC', 'SEEKER', 'PATROL', 'BTFLY'];
+                    const idx = types.indexOf(editor.selectedEnemyType);
+                    editor.selectedEnemyType = types[(idx + 1) % types.length];
+                    editor.selectedTile = 6; // TYPES.ENEMY
+                    editor.updatePaletteUI();
+
+                    const indicator = document.getElementById('mob-enemy-type');
+                    if (indicator) indicator.textContent = names[(idx + 1) % names.length];
+                    editor.updateEnemyTypeUI();
+                }
+            });
+
+            // Grid toggle
+            addEditorBtn('editor-btn-grid', () => {
+                if (game.levelEditor) {
+                    game.levelEditor.showGrid = !game.levelEditor.showGrid;
+                }
+            });
+
+            // Test play
+            addEditorBtn('editor-btn-test', () => {
+                if (game.levelEditor) {
+                    game.levelEditor.testPlay();
+                }
+            });
+
+            // Save
+            addEditorBtn('editor-btn-save', () => {
+                if (game.levelEditor) {
+                    game.levelEditor.saveLevel();
+                }
+            });
+
+            // Load
+            addEditorBtn('editor-btn-load', () => {
+                if (game.levelEditor) {
+                    game.levelEditor.loadLevel();
+                }
+            });
+
+            // Copy to clipboard
+            addEditorBtn('editor-btn-copy', () => {
+                if (game.levelEditor) {
+                    game.levelEditor.copyToClipboard();
+                }
+            });
+
+            // Download JSON
+            addEditorBtn('editor-btn-download', () => {
+                if (game.levelEditor) {
+                    game.levelEditor.downloadJSON();
+                }
+            });
+        }
+    }
+
+    // Start initialization when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMobileControls);
+    } else {
+        initMobileControls();
+    }
 })();

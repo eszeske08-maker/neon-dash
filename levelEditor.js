@@ -20,6 +20,9 @@ class LevelEditor {
         this.gamepadButtonLocked = {};
         this.lastGamepadId = null;
 
+        // Mobile support
+        this.eraseMode = false;
+
         this.levelName = "Custom Level";
         this.diamondsNeeded = 10;
         this.timeLimit = 120;
@@ -27,6 +30,11 @@ class LevelEditor {
         this.initGrid();
         this.setupInput();
         this.initPalette();
+    }
+
+    // Mobile detection helper
+    isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
 
     initGrid() {
@@ -59,10 +67,67 @@ class LevelEditor {
     }
 
     setupInput() {
+        // Mouse events
         this.game.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.game.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         this.game.canvas.addEventListener('mouseup', () => this.handleMouseUp());
         this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Touch events for mobile
+        this.game.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        this.game.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        this.game.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+    }
+
+    handleTouchStart(e) {
+        if (this.game.state !== STATE.EDITOR) return;
+        e.preventDefault();
+
+        const touch = e.touches[0];
+        const rect = this.game.canvas.getBoundingClientRect();
+        const scaleX = this.game.canvas.width / rect.width;
+        const scaleY = this.game.canvas.height / rect.height;
+
+        const x = Math.floor(((touch.clientX - rect.left) * scaleX) / TILE_SIZE);
+        const y = Math.floor(((touch.clientY - rect.top) * scaleY) / TILE_SIZE);
+
+        this.cursorX = x;
+        this.cursorY = y;
+
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            if (this.eraseMode) {
+                this.isErasing = true;
+                this.removeTile(x, y);
+            } else {
+                this.isDrawing = true;
+                this.placeTile(x, y);
+            }
+        }
+    }
+
+    handleTouchMove(e) {
+        if (this.game.state !== STATE.EDITOR) return;
+        e.preventDefault();
+
+        const touch = e.touches[0];
+        const rect = this.game.canvas.getBoundingClientRect();
+        const scaleX = this.game.canvas.width / rect.width;
+        const scaleY = this.game.canvas.height / rect.height;
+
+        const x = Math.floor(((touch.clientX - rect.left) * scaleX) / TILE_SIZE);
+        const y = Math.floor(((touch.clientY - rect.top) * scaleY) / TILE_SIZE);
+
+        this.cursorX = x;
+        this.cursorY = y;
+
+        if (this.isDrawing) this.placeTile(x, y);
+        if (this.isErasing) this.removeTile(x, y);
+    }
+
+    handleTouchEnd(e) {
+        e.preventDefault();
+        this.isDrawing = false;
+        this.isErasing = false;
     }
 
     initPalette() {
