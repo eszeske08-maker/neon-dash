@@ -671,7 +671,24 @@ const I18N = {
             "mobile.tnt": "TNT",
             "mobile.pause": "PAUSE",
             "demo.title": "DEMO MODUS",
-            "demo.pressAnyKey": "BELIEBIGE TASTE DRÜCKEN"
+            "demo.pressAnyKey": "BELIEBIGE TASTE DRÜCKEN",
+            // Settings
+            "settings.title": "⚙️ EINSTELLUNGEN",
+            "settings.audio": "🔊 Audio",
+            "settings.master": "Haupt",
+            "settings.music": "Musik",
+            "settings.sfx": "Effekte",
+            "settings.accessibility": "♿ Barrierefreiheit",
+            "settings.colorblind": "Farbenblind",
+            "settings.cb.off": "Aus",
+            "settings.cb.deut": "Deuteranopie",
+            "settings.cb.trit": "Tritanopie",
+            "settings.cb.high": "Hoher Kontrast",
+            "settings.display": "🖥️ Anzeige",
+            "settings.language": "Sprache",
+            "settings.fullscreen": "Vollbild",
+            "settings.toggle": "Umschalten",
+            "settings.close": "ZURÜCK"
         },
 
         // Spanish
@@ -882,7 +899,24 @@ const I18N = {
             "mobile.tnt": "TNT",
             "mobile.pause": "PAUSA",
             "demo.title": "MODO DEMO",
-            "demo.pressAnyKey": "PULSA CUALQUIER TECLA"
+            "demo.pressAnyKey": "PULSA CUALQUIER TECLA",
+            // Settings
+            "settings.title": "⚙️ AJUSTES",
+            "settings.audio": "🔊 Audio",
+            "settings.master": "Principal",
+            "settings.music": "Música",
+            "settings.sfx": "Efectos",
+            "settings.accessibility": "♿ Accesibilidad",
+            "settings.colorblind": "Daltonismo",
+            "settings.cb.off": "No",
+            "settings.cb.deut": "Deuteranopía",
+            "settings.cb.trit": "Tritanopía",
+            "settings.cb.high": "Alto contraste",
+            "settings.display": "🖥️ Pantalla",
+            "settings.language": "Idioma",
+            "settings.fullscreen": "Pantalla completa",
+            "settings.toggle": "Cambiar",
+            "settings.close": "VOLVER"
         },
 
         // French
@@ -1093,7 +1127,24 @@ const I18N = {
             "mobile.tnt": "TNT",
             "mobile.pause": "PAUSE",
             "demo.title": "MODE DÉMO",
-            "demo.pressAnyKey": "APPUYEZ SUR UNE TOUCHE"
+            "demo.pressAnyKey": "APPUYEZ SUR UNE TOUCHE",
+            // Settings
+            "settings.title": "⚙️ PARAMÈTRES",
+            "settings.audio": "🔊 Audio",
+            "settings.master": "Principal",
+            "settings.music": "Musique",
+            "settings.sfx": "Effets",
+            "settings.accessibility": "♿ Accessibilité",
+            "settings.colorblind": "Daltonisme",
+            "settings.cb.off": "Non",
+            "settings.cb.deut": "Deutéranopie",
+            "settings.cb.trit": "Tritanopie",
+            "settings.cb.high": "Contraste élevé",
+            "settings.display": "🖥️ Affichage",
+            "settings.language": "Langue",
+            "settings.fullscreen": "Plein écran",
+            "settings.toggle": "Basculer",
+            "settings.close": "RETOUR"
         },
 
         // Japanese
@@ -1304,7 +1355,24 @@ const I18N = {
             "mobile.tnt": "TNT",
             "mobile.pause": "一時停止",
             "demo.title": "デモモード",
-            "demo.pressAnyKey": "キーを押してください"
+            "demo.pressAnyKey": "キーを押してください",
+            // Settings
+            "settings.title": "⚙️ 設定",
+            "settings.audio": "🔊 オーディオ",
+            "settings.master": "マスター",
+            "settings.music": "音楽",
+            "settings.sfx": "効果音",
+            "settings.accessibility": "♿ アクセシビリティ",
+            "settings.colorblind": "色覚補助",
+            "settings.cb.off": "オフ",
+            "settings.cb.deut": "赤緑色覚",
+            "settings.cb.trit": "青黄色覚",
+            "settings.cb.high": "ハイコントラスト",
+            "settings.display": "🖥️ ディスプレイ",
+            "settings.language": "言語",
+            "settings.fullscreen": "フルスクリーン",
+            "settings.toggle": "切替",
+            "settings.close": "戻る"
         },
 
         // Chinese Simplified
@@ -1515,7 +1583,24 @@ const I18N = {
             "mobile.tnt": "TNT",
             "mobile.pause": "暂停",
             "demo.title": "演示模式",
-            "demo.pressAnyKey": "按任意键"
+            "demo.pressAnyKey": "按任意键",
+            // Settings
+            "settings.title": "⚙️ 设置",
+            "settings.audio": "🔊 音频",
+            "settings.master": "主音量",
+            "settings.music": "音乐",
+            "settings.sfx": "音效",
+            "settings.accessibility": "♿ 辅助功能",
+            "settings.colorblind": "色盲模式",
+            "settings.cb.off": "关",
+            "settings.cb.deut": "红绿色盲",
+            "settings.cb.trit": "蓝黄色盲",
+            "settings.cb.high": "高对比度",
+            "settings.display": "🖥️ 显示",
+            "settings.language": "语言",
+            "settings.fullscreen": "全屏",
+            "settings.toggle": "切换",
+            "settings.close": "返回"
         },
 
         // Korean
@@ -1726,7 +1811,24 @@ const I18N = {
             "mobile.tnt": "TNT",
             "mobile.pause": "일시정지",
             "demo.title": "데모 모드",
-            "demo.pressAnyKey": "아무 키나 누르세요"
+            "demo.pressAnyKey": "아무 키나 누르세요",
+            // Settings
+            "settings.title": "⚙️ 설정",
+            "settings.audio": "🔊 오디오",
+            "settings.master": "마스터",
+            "settings.music": "음악",
+            "settings.sfx": "효과음",
+            "settings.accessibility": "♿ 접근성",
+            "settings.colorblind": "색맹 모드",
+            "settings.cb.off": "끄기",
+            "settings.cb.deut": "적록색맹",
+            "settings.cb.trit": "청황색맹",
+            "settings.cb.high": "고대비",
+            "settings.display": "🖥️ 디스플레이",
+            "settings.language": "언어",
+            "settings.fullscreen": "전체화면",
+            "settings.toggle": "전환",
+            "settings.close": "뒤로"
         }
     },
 
