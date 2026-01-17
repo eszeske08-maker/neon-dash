@@ -560,3 +560,120 @@
         font-size: 11px;
     }
 }
+
+/* ===== SETTINGS MODAL MOBILE STYLES ===== */
+@media (max-width: 768px),
+(hover: none) {
+
+    /* Settings floating button - reposition to not overlap HUD */
+    .settings-float-btn {
+        top: 60px;
+        right: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+    }
+
+    #settings-modal {
+        padding: 15px;
+        max-width: 95vw;
+        max-height: 85vh;
+        width: 95%;
+    }
+
+    .settings-modal-content h2 {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+    }
+
+    .settings-section {
+        margin: 10px 0;
+        padding: 10px;
+    }
+
+    .settings-section h3 {
+        font-size: 0.8rem;
+        margin-bottom: 8px;
+    }
+
+    .setting-row {
+        margin: 8px 0;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+
+    .setting-row label {
+        flex: 0 0 65px;
+        font-size: 0.7rem;
+    }
+
+    .setting-row input[type="range"] {
+        height: 8px;
+        min-width: 80px;
+    }
+
+    .setting-row input[type="range"]::-webkit-slider-thumb {
+        width: 20px;
+        height: 20px;
+    }
+
+    .setting-row select {
+        padding: 8px 6px;
+        font-size: 0.7rem;
+        min-width: 100px;
+    }
+
+    .setting-row span {
+        flex: 0 0 35px;
+        font-size: 0.7rem;
+    }
+
+    .settings-toggle-btn {
+        padding: 8px 12px;
+        font-size: 0.65rem;
+    }
+
+    #settings-modal .modal-buttons {
+        margin-top: 12px;
+    }
+
+    #settings-modal .menu-button {
+        padding: 10px 25px;
+        font-size: 13px;
+    }
+}
+
+/* Settings in landscape mode */
+@media (max-height: 500px) {
+    .settings-float-btn {
+        top: 8px;
+        right: 8px;
+        width: 34px;
+        height: 34px;
+        font-size: 14px;
+    }
+
+    #settings-modal {
+        max-height: 95vh;
+        padding: 10px;
+    }
+
+    .settings-section {
+        margin: 6px 0;
+        padding: 8px;
+    }
+
+    .settings-section h3 {
+        font-size: 0.75rem;
+        margin-bottom: 5px;
+    }
+
+    .setting-row {
+        margin: 5px 0;
+    }
+
+    #settings-modal .menu-button {
+        padding: 8px 20px;
+        font-size: 12px;
+    }
+}

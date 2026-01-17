@@ -226,6 +226,76 @@ const THEMES = [
     }
 ];
 
+// Colorblind-friendly themes
+const COLORBLIND_THEMES = {
+    deuteranopia: { // Red-Green colorblindness
+        [TYPES.DIRT]: '#5c4033',
+        [TYPES.WALL]: '#1a1a2e',
+        [TYPES.ROCK]: '#ffa500',
+        [TYPES.DIAMOND]: '#00bfff',
+        [TYPES.PLAYER]: '#ffff00',
+        [TYPES.ENEMY]: '#ff00ff',
+        [TYPES.EXIT]: '#ffffff',
+        [TYPES.DYNAMITE_PICKUP]: '#ff6600',
+        [TYPES.DYNAMITE_ACTIVE]: '#ff3300',
+        background: '#0d0d1a',
+        wallGlow: '#6666ff',
+        dirtColor: '#5c4033',
+        dirtDetail: '#3d2b1f',
+        enemySeeker: '#ff66ff',
+        enemyPatroller: '#ffaa00',
+        enemyButterfly: '#00ffff',
+        playerDetail: '#000000',
+        [TYPES.AMOEBA]: '#00ffaa'
+    },
+    tritanopia: { // Blue-Yellow colorblindness
+        [TYPES.DIRT]: '#3d2b1f',
+        [TYPES.WALL]: '#4a4a4a',
+        [TYPES.ROCK]: '#cc5500',
+        [TYPES.DIAMOND]: '#ff69b4',
+        [TYPES.PLAYER]: '#00ff00',
+        [TYPES.ENEMY]: '#ff0000',
+        [TYPES.EXIT]: '#ffffff',
+        [TYPES.DYNAMITE_PICKUP]: '#ff9900',
+        [TYPES.DYNAMITE_ACTIVE]: '#ff3300',
+        background: '#1a0d0d',
+        wallGlow: '#ff6666',
+        dirtColor: '#3d2b1f',
+        dirtDetail: '#261a12',
+        enemySeeker: '#ff9999',
+        enemyPatroller: '#00cc00',
+        enemyButterfly: '#ff66ff',
+        playerDetail: '#ffffff',
+        [TYPES.AMOEBA]: '#66ff66'
+    },
+    highcontrast: { // Maximum contrast
+        [TYPES.DIRT]: '#4a4a4a',
+        [TYPES.WALL]: '#ffffff',
+        [TYPES.ROCK]: '#8b4513',
+        [TYPES.DIAMOND]: '#00ffff',
+        [TYPES.PLAYER]: '#ffff00',
+        [TYPES.ENEMY]: '#ff3333',
+        [TYPES.EXIT]: '#00ff00',
+        [TYPES.DYNAMITE_PICKUP]: '#ff6600',
+        [TYPES.DYNAMITE_ACTIVE]: '#ff0000',
+        background: '#000000',
+        wallGlow: '#ffffff',
+        dirtColor: '#4a4a4a',
+        dirtDetail: '#333333',
+        enemySeeker: '#ff6600',
+        enemyPatroller: '#cc00cc',
+        enemyButterfly: '#00ccff',
+        playerDetail: '#000000',
+        [TYPES.AMOEBA]: '#33ff33'
+    }
+};
+
+// Game settings (persisted to localStorage)
+const gameSettings = {
+    colorblindMode: localStorage.getItem('colorblindMode') || 'off',
+    language: localStorage.getItem('gameLanguage') || 'auto'
+};
+
 // Default to first theme initially
 let COLORS = THEMES[0];
 
@@ -808,17 +878,45 @@ class SoundManager {
         this.enabled = localStorage.getItem('soundEnabled') !== 'false';
         this.musicInterval = null;
         this.menuMusicInterval = null;
+
+        // Volume levels (0-1)
+        this.masterVolume = parseFloat(localStorage.getItem('volumeMaster') || '0.8');
+        this.musicVolume = parseFloat(localStorage.getItem('volumeMusic') || '0.6');
+        this.sfxVolume = parseFloat(localStorage.getItem('volumeSfx') || '1.0');
     }
 
-    async playTone(freq, type, duration, vol = 1.0) {
+    setMasterVolume(value) {
+        this.masterVolume = Math.max(0, Math.min(1, value));
+        localStorage.setItem('volumeMaster', this.masterVolume.toString());
+    }
+
+    setMusicVolume(value) {
+        this.musicVolume = Math.max(0, Math.min(1, value));
+        localStorage.setItem('volumeMusic', this.musicVolume.toString());
+    }
+
+    setSfxVolume(value) {
+        this.sfxVolume = Math.max(0, Math.min(1, value));
+        localStorage.setItem('volumeSfx', this.sfxVolume.toString());
+    }
+
+    getEffectiveVolume(isMusic = false) {
+        const base = isMusic ? this.musicVolume : this.sfxVolume;
+        return base * this.masterVolume;
+    }
+
+    async playTone(freq, type, duration, vol = 1.0, isMusic = false) {
         if (!this.enabled || !this.ctx) return;
         if (this.ctx.state === 'suspended') await this.ctx.resume();
+
+        const effectiveVol = vol * this.getEffectiveVolume(isMusic);
+        if (effectiveVol < 0.01) return; // Skip if too quiet
 
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        gain.gain.setValueAtTime(vol * 0.3, this.ctx.currentTime);
+        gain.gain.setValueAtTime(effectiveVol * 0.3, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         osc.connect(gain);
         gain.connect(this.ctx.destination);
@@ -830,6 +928,9 @@ class SoundManager {
         if (!this.enabled || !this.ctx) return;
         if (this.ctx.state === 'suspended') await this.ctx.resume();
 
+        const effectiveVol = vol * this.getEffectiveVolume(false);
+        if (effectiveVol < 0.01) return; // Skip if too quiet
+
         const bufferSize = this.ctx.sampleRate * duration;
         const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -839,7 +940,7 @@ class SoundManager {
         const noise = this.ctx.createBufferSource();
         noise.buffer = buffer;
         const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(vol * 0.2, this.ctx.currentTime);
+        gain.gain.setValueAtTime(effectiveVol * 0.2, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         noise.connect(gain);
         gain.connect(this.ctx.destination);
@@ -997,12 +1098,12 @@ class SoundManager {
         this.musicInterval = setInterval(() => {
             // Bass line
             const freq = music.bassLine[noteIndex];
-            this.playTone(freq, music.waveform, 0.1, music.volume);
+            this.playTone(freq, music.waveform, 0.1, music.volume, true);
 
             // Arpeggio (every other note for most themes)
             if (music.arpEnabled && noteIndex % 2 === 0) {
                 const arpFreq = music.arpNotes[arpIndex % music.arpNotes.length];
-                this.playTone(arpFreq, music.arpWave, 0.05, music.volume * 0.4);
+                this.playTone(arpFreq, music.arpWave, 0.05, music.volume * 0.4, true);
                 arpIndex++;
             }
 
@@ -1030,15 +1131,15 @@ class SoundManager {
 
             // Bass (Sawtooth) - Pumping effect
             if (step % 2 === 0) {
-                this.playTone(root, 'sawtooth', 0.2, 0.15);
+                this.playTone(root, 'sawtooth', 0.2, 0.15, true);
             } else {
-                this.playTone(root, 'sawtooth', 0.1, 0.1); // Off-beat lighter
+                this.playTone(root, 'sawtooth', 0.1, 0.1, true); // Off-beat lighter
             }
 
             // Arpeggio (Square) - Cyberpunk feel
             const arpNotes = [root * 2, root * 3, root * 4, root * 3];
             const arpNote = arpNotes[step % 4];
-            this.playTone(arpNote, 'square', 0.05, 0.05);
+            this.playTone(arpNote, 'square', 0.05, 0.05, true);
 
             step++;
         }, 200); // ~150 BPM (double time feel)
@@ -1571,23 +1672,29 @@ class Game {
         }
 
         // Select Theme (use custom theme if specified, otherwise rotate based on level index)
-        let themeIndex;
-        if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelData) {
-            // Check if custom level specifies a theme
-            if (typeof this.customLevelData.theme === 'number' &&
-                this.customLevelData.theme >= 0 &&
-                this.customLevelData.theme < THEMES.length) {
-                themeIndex = this.customLevelData.theme;
-            } else {
-                themeIndex = this.customLevelIndex % THEMES.length;
-            }
-        } else if (this.gameMode === GAME_MODES.ROGUE) {
-            themeIndex = (this.rogueDepth - 1) % THEMES.length;
+        // Check colorblind mode first - if enabled, always use the colorblind theme
+        if (gameSettings.colorblindMode !== 'off' && COLORBLIND_THEMES[gameSettings.colorblindMode]) {
+            this.currentTheme = COLORBLIND_THEMES[gameSettings.colorblindMode];
+            this.currentThemeIndex = 0; // Colorblind themes don't cycle
         } else {
-            themeIndex = this.currentLevelIndex % THEMES.length;
+            let themeIndex;
+            if (this.gameMode === GAME_MODES.CUSTOM && this.customLevelData) {
+                // Check if custom level specifies a theme
+                if (typeof this.customLevelData.theme === 'number' &&
+                    this.customLevelData.theme >= 0 &&
+                    this.customLevelData.theme < THEMES.length) {
+                    themeIndex = this.customLevelData.theme;
+                } else {
+                    themeIndex = this.customLevelIndex % THEMES.length;
+                }
+            } else if (this.gameMode === GAME_MODES.ROGUE) {
+                themeIndex = (this.rogueDepth - 1) % THEMES.length;
+            } else {
+                themeIndex = this.currentLevelIndex % THEMES.length;
+            }
+            this.currentTheme = THEMES[themeIndex];
+            this.currentThemeIndex = themeIndex;
         }
-        this.currentTheme = THEMES[themeIndex];
-        this.currentThemeIndex = themeIndex;
         COLORS = this.currentTheme;
 
         // Select Music Theme (can be different from visual theme)
@@ -1599,7 +1706,7 @@ class Game {
             this.currentMusicThemeIndex = this.customLevelData.musicTheme;
         } else {
             // Use visual theme for music by default
-            this.currentMusicThemeIndex = themeIndex;
+            this.currentMusicThemeIndex = this.currentThemeIndex;
         }
 
         // Generate Grid
@@ -5157,4 +5264,122 @@ class Game {
 // Start Game
 window.onload = () => {
     window.game = new Game();
+
+    // Initialize Settings Modal
+    initSettingsModal();
 };
+
+// Settings Modal Controller
+function initSettingsModal() {
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsBtn = document.getElementById('btn-settings-float');
+    const closeBtn = document.getElementById('btn-settings-close');
+    const fullscreenBtn = document.getElementById('btn-settings-fullscreen');
+
+    const volumeMaster = document.getElementById('volume-master');
+    const volumeMusic = document.getElementById('volume-music');
+    const volumeSfx = document.getElementById('volume-sfx');
+    const volumeMasterValue = document.getElementById('volume-master-value');
+    const volumeMusicValue = document.getElementById('volume-music-value');
+    const volumeSfxValue = document.getElementById('volume-sfx-value');
+
+    const colorblindSelect = document.getElementById('colorblind-mode');
+    const languageSelect = document.getElementById('language-select');
+
+    // Load current values
+    function loadSettings() {
+        if (window.game && window.game.sound) {
+            volumeMaster.value = Math.round(window.game.sound.masterVolume * 100);
+            volumeMusic.value = Math.round(window.game.sound.musicVolume * 100);
+            volumeSfx.value = Math.round(window.game.sound.sfxVolume * 100);
+        }
+        updateVolumeDisplays();
+
+        colorblindSelect.value = gameSettings.colorblindMode;
+
+        // Set current language
+        if (typeof getCurrentLanguage === 'function') {
+            languageSelect.value = getCurrentLanguage();
+        }
+    }
+
+    function updateVolumeDisplays() {
+        volumeMasterValue.textContent = volumeMaster.value + '%';
+        volumeMusicValue.textContent = volumeMusic.value + '%';
+        volumeSfxValue.textContent = volumeSfx.value + '%';
+    }
+
+    function openSettings() {
+        loadSettings();
+        settingsModal.classList.remove('hidden');
+        // Pause menu music while in settings (optional)
+    }
+
+    function closeSettings() {
+        settingsModal.classList.add('hidden');
+    }
+
+    // Event Listeners
+    settingsBtn.addEventListener('click', () => {
+        if (window.game && window.game.sound) {
+            window.game.sound.unlock();
+        }
+        openSettings();
+    });
+
+    closeBtn.addEventListener('click', closeSettings);
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !settingsModal.classList.contains('hidden')) {
+            closeSettings();
+        }
+    });
+
+    // Volume sliders
+    volumeMaster.addEventListener('input', () => {
+        if (window.game && window.game.sound) {
+            window.game.sound.setMasterVolume(volumeMaster.value / 100);
+        }
+        updateVolumeDisplays();
+    });
+
+    volumeMusic.addEventListener('input', () => {
+        if (window.game && window.game.sound) {
+            window.game.sound.setMusicVolume(volumeMusic.value / 100);
+        }
+        updateVolumeDisplays();
+    });
+
+    volumeSfx.addEventListener('input', () => {
+        if (window.game && window.game.sound) {
+            window.game.sound.setSfxVolume(volumeSfx.value / 100);
+            // Play test sound
+            window.game.sound.playCollect();
+        }
+        updateVolumeDisplays();
+    });
+
+    // Colorblind mode
+    colorblindSelect.addEventListener('change', () => {
+        gameSettings.colorblindMode = colorblindSelect.value;
+        localStorage.setItem('colorblindMode', colorblindSelect.value);
+        // Note: Theme will apply on next level load
+    });
+
+    // Language selection
+    languageSelect.addEventListener('change', () => {
+        const newLang = languageSelect.value;
+        if (typeof setLanguage === 'function') {
+            setLanguage(newLang);
+        }
+        localStorage.setItem('gameLanguage', newLang);
+    });
+
+    // Fullscreen toggle
+    fullscreenBtn.addEventListener('click', () => {
+        if (window.game) {
+            window.game.toggleFullscreen();
+        }
+    });
+}

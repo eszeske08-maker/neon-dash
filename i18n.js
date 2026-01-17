@@ -236,7 +236,24 @@ const I18N = {
             "mobile.pause": "PAUSE",
             // Demo Mode
             "demo.title": "DEMO MODE",
-            "demo.pressAnyKey": "PRESS ANY KEY"
+            "demo.pressAnyKey": "PRESS ANY KEY",
+            // Settings
+            "settings.title": "⚙️ SETTINGS",
+            "settings.audio": "🔊 Audio",
+            "settings.master": "Master",
+            "settings.music": "Music",
+            "settings.sfx": "SFX",
+            "settings.accessibility": "♿ Accessibility",
+            "settings.colorblind": "Colorblind",
+            "settings.cb.off": "Off",
+            "settings.cb.deut": "Deuteranopia",
+            "settings.cb.trit": "Tritanopia",
+            "settings.cb.high": "High Contrast",
+            "settings.display": "🖥️ Display",
+            "settings.language": "Language",
+            "settings.fullscreen": "Fullscreen",
+            "settings.toggle": "Toggle",
+            "settings.close": "BACK"
         },
 
         // Hungarian
@@ -426,7 +443,24 @@ const I18N = {
             "mobile.pause": "SZÜNET",
             // Demo Mode
             "demo.title": "DEMÓ MÓD",
-            "demo.pressAnyKey": "NYOMJ MEG BÁRMIT"
+            "demo.pressAnyKey": "NYOMJ MEG BÁRMIT",
+            // Settings
+            "settings.title": "⚙️ BEÁLLÍTÁSOK",
+            "settings.audio": "🔊 Hang",
+            "settings.master": "Fő",
+            "settings.music": "Zene",
+            "settings.sfx": "Effekt",
+            "settings.accessibility": "♿ Akadálymentesség",
+            "settings.colorblind": "Színvak",
+            "settings.cb.off": "Ki",
+            "settings.cb.deut": "Deuteranopia",
+            "settings.cb.trit": "Tritanopia",
+            "settings.cb.high": "Magas kontraszt",
+            "settings.display": "🖥️ Kijelző",
+            "settings.language": "Nyelv",
+            "settings.fullscreen": "Teljes kép",
+            "settings.toggle": "Váltás",
+            "settings.close": "VISSZA"
         },
 
         // German

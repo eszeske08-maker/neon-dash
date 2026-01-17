@@ -138,6 +138,74 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Settings Floating Button (always visible) -->
+            <button id="btn-settings-float" class="settings-float-btn" aria-label="Settings">⚙️</button>
+
+            <!-- Settings Modal -->
+            <div id="settings-modal" class="hidden">
+                <div class="modal-content settings-modal-content">
+                    <h2 data-i18n="settings.title">⚙️ SETTINGS</h2>
+
+                    <div class="settings-section">
+                        <h3 data-i18n="settings.audio">🔊 Audio</h3>
+                        <div class="setting-row">
+                            <label data-i18n="settings.master">Master</label>
+                            <input type="range" id="volume-master" min="0" max="100" value="80">
+                            <span id="volume-master-value">80%</span>
+                        </div>
+                        <div class="setting-row">
+                            <label data-i18n="settings.music">Music</label>
+                            <input type="range" id="volume-music" min="0" max="100" value="60">
+                            <span id="volume-music-value">60%</span>
+                        </div>
+                        <div class="setting-row">
+                            <label data-i18n="settings.sfx">SFX</label>
+                            <input type="range" id="volume-sfx" min="0" max="100" value="100">
+                            <span id="volume-sfx-value">100%</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 data-i18n="settings.accessibility">♿ Accessibility</h3>
+                        <div class="setting-row">
+                            <label data-i18n="settings.colorblind">Colorblind</label>
+                            <select id="colorblind-mode">
+                                <option value="off" data-i18n="settings.cb.off">Off</option>
+                                <option value="deuteranopia" data-i18n="settings.cb.deut">Deuteranopia</option>
+                                <option value="tritanopia" data-i18n="settings.cb.trit">Tritanopia</option>
+                                <option value="highcontrast" data-i18n="settings.cb.high">High Contrast</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 data-i18n="settings.display">🖥️ Display</h3>
+                        <div class="setting-row">
+                            <label data-i18n="settings.language">Language</label>
+                            <select id="language-select">
+                                <option value="hu">Magyar</option>
+                                <option value="en">English</option>
+                                <option value="de">Deutsch</option>
+                                <option value="es">Español</option>
+                                <option value="fr">Français</option>
+                                <option value="ja">日本語</option>
+                                <option value="zh">中文</option>
+                                <option value="ko">한국어</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <label data-i18n="settings.fullscreen">Fullscreen</label>
+                            <button id="btn-settings-fullscreen" class="settings-toggle-btn"
+                                data-i18n="settings.toggle">Toggle</button>
+                        </div>
+                    </div>
+
+                    <div class="modal-buttons">
+                        <button id="btn-settings-close" class="menu-button" data-i18n="settings.close">BACK</button>
+                    </div>
+                </div>
+            </div>
             <div id="editor-overlay" class="hidden">
                 <div id="editor-toolbar">
                     <div id="editor-palette">
