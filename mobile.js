@@ -97,7 +97,9 @@
                 if (game.state === 1) {
                     game.prevState = 1; // Save previous state
                     game.state = 6;
+                    game.pauseSelectedIndex = 0; // Reset selection to first button
                     document.getElementById('pause-overlay').classList.remove('hidden');
+                    if (game.updatePauseSelection) game.updatePauseSelection();
                 }
                 else if (game.state === 6) {
                     game.state = game.prevState || 1; // Restore previous state
@@ -218,14 +220,13 @@
                 if (game.levelEditor) {
                     const editor = game.levelEditor;
                     const types = [0, 1, 2, 3]; // BASIC, SEEKER, PATROLLER, BUTTERFLY
-                    const names = ['BASIC', 'SEEKER', 'PATROL', 'BTFLY'];
                     const idx = types.indexOf(editor.selectedEnemyType);
                     editor.selectedEnemyType = types[(idx + 1) % types.length];
                     editor.selectedTile = 6; // TYPES.ENEMY
                     editor.updatePaletteUI();
 
                     const indicator = document.getElementById('mob-enemy-type');
-                    if (indicator) indicator.textContent = names[(idx + 1) % names.length];
+                    if (indicator) indicator.textContent = editor.getEnemyTypeName();
                     editor.updateEnemyTypeUI();
                 }
             });

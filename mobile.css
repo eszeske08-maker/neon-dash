@@ -493,9 +493,9 @@
     }
 
     #editor-palette .palette-item {
-        min-width: 36px;
+        min-width: 48px;
         min-height: 36px;
-        width: 36px;
+        width: 48px;
         height: 36px;
         font-size: 8px;
         padding: 2px;
@@ -513,5 +513,50 @@
 
     #editor-overlay {
         padding-bottom: 100px;
+    }
+}
+
+/* ===== MOBILE PAUSE MENU COMPACT STYLES ===== */
+@media (max-width: 768px),
+(hover: none) {
+    #pause-overlay {
+        padding: 20px 30px;
+    }
+
+    #pause-overlay h1 {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+
+    .pause-menu-buttons {
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .pause-menu-buttons .menu-button {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+}
+
+/* Landscape - even more compact */
+@media (max-height: 500px) {
+    #pause-overlay {
+        padding: 15px 25px;
+    }
+
+    #pause-overlay h1 {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+
+    .pause-menu-buttons {
+        gap: 5px;
+        margin-top: 5px;
+    }
+
+    .pause-menu-buttons .menu-button {
+        padding: 6px 12px;
+        font-size: 11px;
     }
 }

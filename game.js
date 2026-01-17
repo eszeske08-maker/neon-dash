@@ -1296,7 +1296,7 @@ class Game {
             this.sound.playMenuBlip();
             this.sound.enabled = !this.sound.enabled;
             localStorage.setItem('soundEnabled', this.sound.enabled.toString());
-            document.getElementById('btn-sound').innerText = `SOUND: ${this.sound.enabled ? 'ON' : 'OFF'}`;
+            document.getElementById('btn-sound').innerText = this.sound.enabled ? t('pause.soundOn') : t('pause.soundOff');
         });
 
         document.getElementById('btn-fullscreen').addEventListener('click', () => {
@@ -1341,8 +1341,20 @@ class Game {
             }
         });
 
+        // Back to Editor button (only visible in test mode)
+        document.getElementById('btn-back-editor').addEventListener('click', () => {
+            this.sound.playMenuConfirm();
+            if (this.state === STATE.PAUSED && this.isTesting) {
+                this.state = STATE.EDITOR;
+                document.getElementById('pause-overlay').classList.add('hidden');
+                document.getElementById('editor-overlay').classList.remove('hidden');
+                this.isTesting = false;
+                this.sound.stopGameMusic();
+            }
+        });
+
         // Add hover sounds to all pause menu buttons
-        ['btn-resume', 'btn-restart', 'btn-sound', 'btn-fullscreen', 'btn-menu'].forEach(id => {
+        ['btn-resume', 'btn-back-editor', 'btn-restart', 'btn-sound', 'btn-fullscreen', 'btn-menu'].forEach(id => {
             const btn = document.getElementById(id);
             if (btn) {
                 btn.addEventListener('mouseenter', () => this.sound.playMenuHover());
@@ -2500,14 +2512,14 @@ class Game {
             this.ctx.fillStyle = '#ffffff';
             this.ctx.font = '40px Orbitron';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('DEMO MODE', this.width / 2, this.height / 2);
+            this.ctx.fillText(t('demo.title'), this.width / 2, this.height / 2);
 
             this.ctx.font = '20px Orbitron';
             this.ctx.shadowBlur = 0;
             this.ctx.fillStyle = '#cccccc';
 
             if (Math.floor(Date.now() / 500) % 2 === 0) {
-                this.ctx.fillText('PRESS ANY KEY', this.width / 2, this.height / 2 + 40);
+                this.ctx.fillText(t('demo.pressAnyKey'), this.width / 2, this.height / 2 + 40);
             }
             this.ctx.restore();
         }
@@ -3042,8 +3054,8 @@ class Game {
             if ((e.key === 'm' || e.key === 'M') && isKeyDown) {
                 this.sound.enabled = !this.sound.enabled;
                 localStorage.setItem('soundEnabled', this.sound.enabled.toString());
-                document.getElementById('btn-sound').innerText = `SOUND: ${this.sound.enabled ? 'ON' : 'OFF'}`;
-                this.showMessage(this.sound.enabled ? "SOUND ON" : "SOUND OFF", "");
+                document.getElementById('btn-sound').innerText = this.sound.enabled ? t('pause.soundOn') : t('pause.soundOff');
+                this.showMessage(this.sound.enabled ? t("msg.soundOn") : t("msg.soundOff"), "");
                 setTimeout(() => {
                     if (this.state !== STATE.MENU) {
                         document.getElementById('message-overlay').classList.add('hidden');
@@ -3339,8 +3351,8 @@ class Game {
 
                 console.log(`Loaded level pack "${data.name || 'Unnamed'}" with ${data.levels.length} levels`);
                 this.customLevelPack = data.levels;
-                packName = data.name || `${data.levels.length} Levels`;
-                packDescription = data.description || null;
+                packName = I18N.getLocalizedField(data, 'name') || `${data.levels.length} Levels`;
+                packDescription = I18N.getLocalizedField(data, 'description') || null;
                 packDetails = {
                     author: data.author || null,
                     website: data.website || data.url || null,
@@ -3356,8 +3368,8 @@ class Game {
 
                 console.log('Loaded single custom level');
                 this.customLevelPack = [data];
-                packName = data.name || data.title || 'Single Level';
-                packDescription = data.description || null;
+                packName = I18N.getLocalizedField(data, 'name') || I18N.getLocalizedField(data, 'title') || 'Single Level';
+                packDescription = I18N.getLocalizedField(data, 'description') || null;
             }
 
             // Show level selector instead of starting game directly
@@ -3449,7 +3461,7 @@ class Game {
 
             const title = document.createElement('span');
             title.className = 'level-title';
-            title.textContent = level.title || level.name || `Level ${index + 1}`;
+            title.textContent = I18N.getLocalizedField(level, 'title') || I18N.getLocalizedField(level, 'name') || `Level ${index + 1}`;
 
             const meta = document.createElement('span');
             meta.className = 'level-meta';
@@ -3660,9 +3672,9 @@ class Game {
         prepared.time = levelData.time || levelData.timeLimit || 120;
         prepared.type = 'custom';
 
-        // Optional metadata
-        prepared.title = levelData.title || levelData.name || null;
-        prepared.description = levelData.description || levelData.desc || null;
+        // Optional metadata (with localization support)
+        prepared.title = I18N.getLocalizedField(levelData, 'title') || I18N.getLocalizedField(levelData, 'name') || null;
+        prepared.description = I18N.getLocalizedField(levelData, 'description') || levelData.desc || null;
 
         // Optional theme (0-7)
         if (typeof levelData.theme === 'number') {
@@ -4075,6 +4087,16 @@ class Game {
     }
 
     updatePauseSelection() {
+        // Handle Back to Editor button visibility based on test mode
+        const backEditorBtn = document.getElementById('btn-back-editor');
+        if (backEditorBtn) {
+            if (this.isTesting) {
+                backEditorBtn.classList.remove('hidden');
+            } else {
+                backEditorBtn.classList.add('hidden');
+            }
+        }
+
         // Remove selection from all pause buttons
         this.pauseButtons.forEach(id => {
             const btn = document.getElementById(id);
@@ -4890,7 +4912,7 @@ class Game {
         this.vibrate(500, 1.0, 1.0);
 
         if (this.isTesting) {
-            this.showMessage("TEST FAILED", "Returning to Editor...");
+            this.showMessage(t("msg.testFailed"), t("msg.returnEditor"));
             setTimeout(() => {
                 this.state = STATE.EDITOR;
                 document.getElementById('editor-overlay').classList.remove('hidden');
@@ -4901,7 +4923,7 @@ class Game {
         }
 
         if (this.gameMode === GAME_MODES.HARDCORE) {
-            this.showMessage("GAME OVER", "Hardcore Mode: Returning to Menu...");
+            this.showMessage(t("msg.gameOver"), t("msg.hardcoreReturn"));
             this.deathTimeout = setTimeout(() => {
                 this.state = STATE.MENU;
                 this.sound.stopGameMusic();
@@ -4912,7 +4934,7 @@ class Game {
         }
 
         if (this.gameMode === GAME_MODES.ROGUE) {
-            this.showMessage("GAME OVER", `Depth Reached: ${this.rogueDepth} | Score: ${this.score}`);
+            this.showMessage(t("msg.gameOver"), t("msg.rogueDepth", { depth: this.rogueDepth, score: this.score }));
             this.deathTimeout = setTimeout(() => {
                 this.state = STATE.MENU;
                 this.sound.stopGameMusic();
@@ -4922,14 +4944,14 @@ class Game {
             return;
         }
 
-        this.showMessage("GAME OVER", "Press R to Restart Level");
+        this.showMessage(t("msg.gameOver"), t("msg.pressR"));
     }
 
     winGame() {
         if (this.state === STATE.TRANSITION) return;
 
         if (this.isTesting) {
-            this.showMessage("TEST SUCCESS", "Returning to Editor...");
+            this.showMessage(t("msg.testSuccess"), t("msg.returnEditor"));
             this.sound.playWin();
             setTimeout(() => {
                 this.state = STATE.EDITOR;
@@ -4962,12 +4984,12 @@ class Game {
                 this.customLevelData = this.prepareCustomLevel(this.customLevelPack[this.customLevelIndex]);
                 const nextTitle = this.customLevelData.title || `Level ${this.customLevelIndex + 1}`;
                 const subtitle = this.customLevelData.description || `${this.customLevelIndex + 1} of ${this.customLevelPack.length}`;
-                this.showMessage("LEVEL COMPLETE", `Next: ${nextTitle}`);
+                this.showMessage(t("msg.levelComplete"), t("msg.next", { title: nextTitle }));
                 this.sound.playWin();
                 setTimeout(() => {
                     // Show level intro if has description
                     if (this.customLevelData.description) {
-                        this.showMessage(this.customLevelData.title || "LEVEL START", this.customLevelData.description);
+                        this.showMessage(this.customLevelData.title || t("msg.levelStart"), this.customLevelData.description);
                         setTimeout(() => {
                             document.getElementById('message-overlay').classList.add('hidden');
                             this.initLevel();
@@ -4982,7 +5004,7 @@ class Game {
                 // Completed all custom levels
                 this.state = STATE.WIN;
                 this.sound.playWin();
-                this.showMessage("PACK COMPLETE!", `Final Score: ${this.score}`);
+                this.showMessage(t("msg.packComplete"), t("msg.finalScore", { score: this.score }));
                 setTimeout(() => {
                     this.state = STATE.MENU;
                     this.customLevelPack = null;
@@ -5001,8 +5023,8 @@ class Game {
 
         if (isEndlessModeActive || this.currentLevelIndex < LEVELS.length) {
             const levelNum = this.currentLevelIndex + 1;
-            const message = isEndlessModeActive ? `Level ${levelNum} Complete!` : "LEVEL COMPLETE";
-            this.showMessage(message, "Get Ready for Next Level...");
+            const message = isEndlessModeActive ? t("msg.levelNum", { n: levelNum }) : t("msg.levelComplete");
+            this.showMessage(message, t("msg.getReady"));
             this.sound.playWin();
             setTimeout(() => {
                 this.initLevel();
@@ -5012,7 +5034,7 @@ class Game {
             this.state = STATE.WIN;
             this.sound.playWin();
 
-            this.showMessage("VICTORY!", `Final Score: ${this.score}`);
+            this.showMessage(t("msg.victory"), t("msg.finalScore", { score: this.score }));
             setTimeout(() => {
                 this.state = STATE.MENU;
                 this.updateMenuUI();
@@ -5040,7 +5062,7 @@ class Game {
         // Update UI
         const overlay = document.getElementById('perk-select-overlay');
         const depthInfo = document.getElementById('perk-depth-info');
-        depthInfo.innerText = `Depth ${this.rogueDepth} Complete!`;
+        depthInfo.innerText = t('perk.depth', { n: this.rogueDepth });
 
         // Update each card
         for (let i = 0; i < 3; i++) {
@@ -5048,8 +5070,8 @@ class Game {
             if (i < this.perkChoices.length) {
                 const perk = this.perkChoices[i];
                 card.querySelector('.perk-icon').innerText = perk.icon;
-                card.querySelector('.perk-name').innerText = perk.name;
-                card.querySelector('.perk-desc').innerText = perk.description;
+                card.querySelector('.perk-name').innerText = t(`perk.${perk.id}.name`);
+                card.querySelector('.perk-desc').innerText = t(`perk.${perk.id}.desc`);
                 card.classList.remove('hidden');
                 card.onclick = () => this.selectPerk(i);
                 card.onmouseenter = () => {

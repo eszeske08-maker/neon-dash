@@ -5,9 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Neon Dash</title>
+    <!-- Favicons - cross-platform support -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="stylesheet" href="style.css?v=107">
     <link rel="stylesheet" href="mobile.css?v=116">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+SC:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap"
+        rel="stylesheet">
 </head>
 
 <body>
@@ -15,11 +21,13 @@
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer">
             <div class="hud-panel">
-                <div class="hud-item">SCORE: <span id="score">00000</span></div>
-                <div class="hud-item">DIAMONDS: <span id="diamonds">0/10</span></div>
-                <div class="hud-item" style="color: #ff4444;">TNT: <span id="dynamite">0</span></div>
-                <div class="hud-item">TIME: <span id="time">000</span></div>
-                <div class="hud-item">LEVEL: <span id="level">1</span></div>
+                <div class="hud-item"><span data-i18n="hud.score">SCORE</span>: <span id="score">00000</span></div>
+                <div class="hud-item"><span data-i18n="hud.diamonds">DIAMONDS</span>: <span id="diamonds">0/10</span>
+                </div>
+                <div class="hud-item" style="color: #ff4444;"><span data-i18n="hud.tnt">TNT</span>: <span
+                        id="dynamite">0</span></div>
+                <div class="hud-item"><span data-i18n="hud.time">TIME</span>: <span id="time">000</span></div>
+                <div class="hud-item"><span data-i18n="hud.level">LEVEL</span>: <span id="level">1</span></div>
             </div>
 
             <div id="fps-counter" class="hidden">FPS: <span id="fps">60</span></div>
@@ -27,68 +35,72 @@
             <div id="menu-screen">
                 <h1 class="game-title">NEON DASH</h1>
                 <div class="menu-buttons-container">
-                    <button id="btn-campaign" class="menu-button primary">CAMPAIGN</button>
-                    <button id="btn-endless" class="menu-button">ENDLESS</button>
-                    <button id="btn-hardcore" class="menu-button danger">HARDCORE</button>
-                    <button id="btn-rogue" class="menu-button special">ROGUE MINER</button>
-                    <button id="btn-load-level" class="menu-button">LOAD LEVEL</button>
-                    <button id="btn-editor" class="menu-button">LEVEL EDITOR</button>
-                    <button id="btn-help" class="menu-button">HELP</button>
+                    <button id="btn-campaign" class="menu-button primary" data-i18n="menu.campaign">CAMPAIGN</button>
+                    <button id="btn-endless" class="menu-button" data-i18n="menu.endless">ENDLESS</button>
+                    <button id="btn-hardcore" class="menu-button danger" data-i18n="menu.hardcore">HARDCORE</button>
+                    <button id="btn-rogue" class="menu-button special" data-i18n="menu.rogue">ROGUE MINER</button>
+                    <button id="btn-load-level" class="menu-button" data-i18n="menu.loadLevel">LOAD LEVEL</button>
+                    <button id="btn-editor" class="menu-button" data-i18n="menu.editor">LEVEL EDITOR</button>
+                    <button id="btn-help" class="menu-button" data-i18n="menu.help">HELP</button>
                 </div>
-                <p class="menu-hint">Select a Game Mode to Start</p>
+                <p class="menu-hint" data-i18n="menu.hint">Select a Game Mode to Start</p>
             </div>
 
             <div id="load-level-modal" class="hidden">
                 <div class="modal-content">
-                    <h2>LOAD LEVEL</h2>
-                    <p>Load from URL or local file</p>
+                    <h2 data-i18n="load.title">LOAD LEVEL</h2>
+                    <p data-i18n="load.desc">Load from URL or local file</p>
                     <input type="text" id="level-url-input" placeholder="https://example.com/level.json">
                     <div class="file-input-wrapper">
-                        <span>OR</span>
-                        <label for="level-file-input" class="file-label">📁 Choose File</label>
+                        <span data-i18n="load.or">OR</span>
+                        <label for="level-file-input" class="file-label" data-i18n="load.chooseFile">📁 Choose
+                            File</label>
                         <input type="file" id="level-file-input" accept=".json" style="display: none;">
                         <span id="file-name-display"></span>
                     </div>
                     <div class="modal-buttons">
-                        <button id="btn-load-confirm" class="menu-button">LOAD</button>
-                        <button id="btn-load-cancel" class="menu-button">CANCEL</button>
+                        <button id="btn-load-confirm" class="menu-button" data-i18n="load.confirm">LOAD</button>
+                        <button id="btn-load-cancel" class="menu-button" data-i18n="load.cancel">CANCEL</button>
                     </div>
                 </div>
             </div>
 
             <div id="level-selector-modal" class="hidden">
                 <div class="modal-content level-selector-content">
-                    <h2>SELECT LEVEL</h2>
-                    <p id="level-pack-info">Level Pack</p>
+                    <h2 data-i18n="levelSelect.title">SELECT LEVEL</h2>
+                    <p id="level-pack-info" data-i18n="levelSelect.pack">Level Pack</p>
                     <div id="level-list" class="level-list">
                         <!-- Level items dynamically injected by JS -->
                     </div>
                     <div class="modal-buttons">
-                        <button id="btn-level-start" class="menu-button primary">START</button>
-                        <button id="btn-level-back" class="menu-button">BACK</button>
+                        <button id="btn-level-start" class="menu-button primary"
+                            data-i18n="levelSelect.start">START</button>
+                        <button id="btn-level-back" class="menu-button" data-i18n="levelSelect.back">BACK</button>
                     </div>
                 </div>
             </div>
 
             <div id="message-overlay" class="hidden">
-                <h1 id="message-title">READY?</h1>
-                <p id="message-subtitle">Press ANY KEY to Start</p>
-                <button id="message-restart-btn" class="menu-button hidden">RESTART</button>
+                <h1 id="message-title" data-i18n="msg.ready">READY?</h1>
+                <p id="message-subtitle" data-i18n="msg.pressKey">Press ANY KEY to Start</p>
+                <button id="message-restart-btn" class="menu-button hidden" data-i18n="msg.restart">RESTART</button>
             </div>
 
             <div id="pause-overlay" class="hidden">
-                <h1>PAUSED</h1>
+                <h1 data-i18n="pause.title">PAUSED</h1>
                 <div class="pause-menu-buttons">
-                    <button id="btn-resume" class="menu-button">RESUME</button>
-                    <button id="btn-restart" class="menu-button">RESTART LEVEL</button>
-                    <button id="btn-sound" class="menu-button">SOUND: ON</button>
-                    <button id="btn-fullscreen" class="menu-button">FULLSCREEN</button>
-                    <button id="btn-menu" class="menu-button">EXIT TO MENU</button>
+                    <button id="btn-resume" class="menu-button" data-i18n="pause.resume">RESUME</button>
+                    <button id="btn-back-editor" class="menu-button special hidden" data-i18n="pause.backEditor">BACK TO
+                        EDITOR</button>
+                    <button id="btn-restart" class="menu-button" data-i18n="pause.restart">RESTART LEVEL</button>
+                    <button id="btn-sound" class="menu-button" data-i18n="pause.soundOn">SOUND: ON</button>
+                    <button id="btn-fullscreen" class="menu-button" data-i18n="pause.fullscreen">FULLSCREEN</button>
+                    <button id="btn-menu" class="menu-button" data-i18n="pause.exitMenu">EXIT TO MENU</button>
                 </div>
             </div>
 
             <div id="perk-select-overlay" class="hidden">
-                <h1>CHOOSE YOUR UPGRADE</h1>
+                <h1 data-i18n="perk.title">CHOOSE YOUR UPGRADE</h1>
                 <p id="perk-depth-info">Depth 1 Complete!</p>
                 <div class="perk-cards">
                     <div class="perk-card" id="perk-card-0" tabindex="0">
@@ -111,118 +123,12 @@
 
             <div id="help-modal" class="hidden">
                 <div class="modal-content help-modal-content">
-                    <h2>📖 GAME GUIDE</h2>
+                    <h2 data-i18n="help.title">📖 GAME GUIDE</h2>
                     <div class="help-scroll-area">
-
-                        <div class="help-section">
-                            <h3>🎮 GAME MODES</h3>
-                            <div class="help-item"><span class="help-icon">🚀</span><strong>CAMPAIGN</strong> - Play
-                                through handcrafted levels with increasing difficulty.</div>
-                            <div class="help-item"><span class="help-icon">♾️</span><strong>ENDLESS</strong> -
-                                Procedurally generated levels that go on forever. How far can you go?</div>
-                            <div class="help-item"><span class="help-icon">💀</span><strong>HARDCORE</strong> - One life
-                                only! No restarts. The ultimate challenge.</div>
-                            <div class="help-item"><span class="help-icon">💎</span><strong>ROGUE MINER</strong> -
-                                Roguelike mode with upgrades between levels. Collect perks to become stronger!</div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>🧱 TILES & ELEMENTS</h3>
-                            <div class="help-item"><span class="help-icon tile-empty">⬛</span><strong>EMPTY</strong> -
-                                Open space you can move through freely.</div>
-                            <div class="help-item"><span class="help-icon tile-dirt">🟫</span><strong>DIRT</strong> -
-                                Diggable terrain. Walk through it to clear and earn 10 points.</div>
-                            <div class="help-item"><span class="help-icon tile-wall">⬜</span><strong>WALL</strong> -
-                                Indestructible barrier. Cannot be passed or destroyed.</div>
-                            <div class="help-item"><span class="help-icon tile-rock">🪨</span><strong>ROCK</strong> -
-                                Falls when unsupported. Deadly when falling! Can roll off other rocks.</div>
-                            <div class="help-item"><span
-                                    class="help-icon tile-diamond">💎</span><strong>DIAMOND</strong> - Collect these!
-                                Worth 100 points. Collect enough to unlock the exit.</div>
-                            <div class="help-item"><span class="help-icon tile-player">🧑</span><strong>PLAYER</strong>
-                                - That's you! Navigate the caves and collect diamonds.</div>
-                            <div class="help-item"><span class="help-icon tile-exit">🚪</span><strong>EXIT</strong> -
-                                Your goal! Unlocks when you collect enough diamonds. Reach it to complete the level.
-                            </div>
-                            <div class="help-item"><span class="help-icon tile-tnt">💣</span><strong>TNT PICKUP</strong>
-                                - Collect to add explosives to your inventory. Use them wisely!</div>
-                            <div class="help-item"><span class="help-icon tile-steel">🔲</span><strong>STEEL
-                                    WALL</strong> - Extra reinforced wall. Cannot be destroyed even by explosions.</div>
-                            <div class="help-item"><span class="help-icon tile-magic">✨</span><strong>MAGIC
-                                    WALL</strong> - Transforms rocks into diamonds and diamonds into rocks when they
-                                fall through!</div>
-                            <div class="help-item"><span class="help-icon tile-amoeba">🦠</span><strong>AMOEBA</strong>
-                                - Living organism that grows over time. If it grows too large, it turns into rocks. If
-                                trapped, it becomes diamonds!</div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>👾 ENEMY TYPES</h3>
-                            <div class="help-item"><span class="help-icon enemy-basic">👾</span><strong>BASIC</strong> -
-                                Wanders randomly. Unpredictable but not smart.</div>
-                            <div class="help-item"><span class="help-icon enemy-seeker">🎯</span><strong>SEEKER</strong>
-                                - Actively hunts the player! Dangerous and relentless.</div>
-                            <div class="help-item"><span
-                                    class="help-icon enemy-patroller">🔄</span><strong>PATROLLER</strong> - Follows
-                                walls clockwise. Predictable patrol routes.</div>
-                            <div class="help-item"><span
-                                    class="help-icon enemy-butterfly">🦋</span><strong>BUTTERFLY</strong> - Follows
-                                walls counter-clockwise. When crushed by rocks, explodes into diamonds!</div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>🎹 CONTROLS</h3>
-                            <div class="help-subsection">
-                                <h4>⌨️ Keyboard</h4>
-                                <div class="help-item"><strong>Arrow Keys / WASD</strong> - Move player</div>
-                                <div class="help-item"><strong>Space</strong> - Place TNT explosive</div>
-                                <div class="help-item"><strong>Escape</strong> - Pause / Resume game</div>
-                                <div class="help-item"><strong>R</strong> - Restart level (double-tap)</div>
-                                <div class="help-item"><strong>M</strong> - Toggle sound on/off</div>
-                                <div class="help-item"><strong>F</strong> - Toggle fullscreen</div>
-                                <div class="help-item"><strong>L</strong> - Open Level Editor</div>
-                            </div>
-                            <div class="help-subsection">
-                                <h4>🎮 Gamepad</h4>
-                                <div class="help-item"><strong>D-Pad / Left Stick</strong> - Move player</div>
-                                <div class="help-item"><strong>A / Cross</strong> - Confirm / Start</div>
-                                <div class="help-item"><strong>B / Circle</strong> - Place TNT</div>
-                                <div class="help-item"><strong>Start</strong> - Pause / Resume</div>
-                            </div>
-                            <div class="help-subsection">
-                                <h4>📱 Mobile</h4>
-                                <div class="help-item"><strong>D-Pad</strong> - Virtual directional pad for movement
-                                </div>
-                                <div class="help-item"><strong>TNT Button</strong> - Place explosive</div>
-                                <div class="help-item"><strong>Pause Button</strong> - Access pause menu</div>
-                            </div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>💰 SCORING</h3>
-                            <div class="help-item"><span class="help-icon">🟫</span><strong>Digging Dirt</strong> - 10
-                                points</div>
-                            <div class="help-item"><span class="help-icon">💎</span><strong>Collecting Diamond</strong>
-                                - 100 points</div>
-                            <div class="help-item"><span class="help-icon">⏱️</span><strong>Time Bonus</strong> -
-                                Remaining seconds × 10</div>
-                            <div class="help-item"><span class="help-icon">🏆</span><strong>Level Complete</strong> -
-                                1000 points</div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>💡 TIPS</h3>
-                            <div class="help-item">• Rocks and diamonds fall when nothing is below them</div>
-                            <div class="help-item">• Falling objects are deadly - don't stand under them!</div>
-                            <div class="help-item">• Enemies can be crushed by falling rocks</div>
-                            <div class="help-item">• Use TNT to clear paths, but be careful of chain reactions</div>
-                            <div class="help-item">• Butterflies drop diamonds when killed - lure them under rocks!
-                            </div>
-                        </div>
-
+                        <!-- Content dynamically generated by i18n.js -->
                     </div>
                     <div class="modal-buttons">
-                        <button id="btn-help-close" class="menu-button">BACK</button>
+                        <button id="btn-help-close" class="menu-button" data-i18n="help.close">BACK</button>
                     </div>
                 </div>
             </div>
@@ -243,21 +149,29 @@
                     <span id="hint-erase">Right Click: Erase</span>
                 </div>
                 <div id="editor-export">
-                    <button id="btn-copy-level" class="export-btn">📋 Copy JSON</button>
-                    <button id="btn-download-level" class="export-btn">💾 Download</button>
+                    <button id="btn-copy-level" class="export-btn" data-i18n="editor.copyJson">📋 Copy JSON</button>
+                    <button id="btn-download-level" class="export-btn" data-i18n="editor.download">💾 Download</button>
                 </div>
                 <!-- Mobile Editor Toolbar -->
                 <div id="editor-mobile-toolbar" class="mobile-only">
-                    <button id="editor-btn-exit" class="editor-mobile-btn">✖<br>EXIT</button>
-                    <button id="editor-btn-erase" class="editor-mobile-btn">🗑️<br>ERASE</button>
+                    <button id="editor-btn-exit" class="editor-mobile-btn">✖<br><span
+                            data-i18n="editor.exit">EXIT</span></button>
+                    <button id="editor-btn-erase" class="editor-mobile-btn">🗑️<br><span
+                            data-i18n="editor.erase">ERASE</span></button>
                     <button id="editor-btn-enemy" class="editor-mobile-btn">👾<br><span
                             id="mob-enemy-type">BASIC</span></button>
-                    <button id="editor-btn-grid" class="editor-mobile-btn">⊞<br>GRID</button>
-                    <button id="editor-btn-test" class="editor-mobile-btn">▶<br>TEST</button>
-                    <button id="editor-btn-save" class="editor-mobile-btn">💾<br>SAVE</button>
-                    <button id="editor-btn-load" class="editor-mobile-btn">📂<br>LOAD</button>
-                    <button id="editor-btn-copy" class="editor-mobile-btn">📋<br>COPY</button>
-                    <button id="editor-btn-download" class="editor-mobile-btn">⬇️<br>JSON</button>
+                    <button id="editor-btn-grid" class="editor-mobile-btn">⊞<br><span
+                            data-i18n="editor.grid">GRID</span></button>
+                    <button id="editor-btn-test" class="editor-mobile-btn">▶<br><span
+                            data-i18n="editor.test">TEST</span></button>
+                    <button id="editor-btn-save" class="editor-mobile-btn">💾<br><span
+                            data-i18n="editor.save">SAVE</span></button>
+                    <button id="editor-btn-load" class="editor-mobile-btn">📂<br><span
+                            data-i18n="editor.load">LOAD</span></button>
+                    <button id="editor-btn-copy" class="editor-mobile-btn">📋<br><span
+                            data-i18n="editor.copy">COPY</span></button>
+                    <button id="editor-btn-download" class="editor-mobile-btn">⬇️<br><span
+                            data-i18n="editor.json">JSON</span></button>
                 </div>
             </div>
 
@@ -271,13 +185,16 @@
                     <div class="dpad-center"></div>
                 </div>
                 <div id="action-buttons">
-                    <button id="mobile-tnt-btn" class="action-btn">💣<br>TNT</button>
-                    <button id="mobile-pause-btn" class="action-btn">⏸<br>PAUSE</button>
+                    <button id="mobile-tnt-btn" class="action-btn">💣<br><span
+                            data-i18n="mobile.tnt">TNT</span></button>
+                    <button id="mobile-pause-btn" class="action-btn">⏸<br><span
+                            data-i18n="mobile.pause">PAUSE</span></button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="i18n.js?v=1"></script>
     <script src="levelEditor.js?v=112"></script>
     <script src="game.js?v=124"></script>
     <script src="mobile.js?v=111"></script>

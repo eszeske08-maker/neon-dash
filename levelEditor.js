@@ -18,7 +18,7 @@ class LevelEditor {
         this.gamepadCursorY = Math.floor(GRID_HEIGHT / 2);
         this.gamepadMoveTimer = 0;
         this.gamepadButtonLocked = {};
-        this.lastGamepadId = null;
+        this.lastGamepadId = undefined; // Use undefined so first updateControlsUI runs
 
         // Mobile support
         this.eraseMode = false;
@@ -30,6 +30,7 @@ class LevelEditor {
         this.initGrid();
         this.setupInput();
         this.initPalette();
+        this.updateControlsUI(); // Force initial translation of hints
     }
 
     // Mobile detection helper
@@ -135,18 +136,18 @@ class LevelEditor {
         paletteContainer.innerHTML = '';
 
         const tiles = [
-            { type: TYPES.EMPTY, label: 'EMPTY', color: '#000' },
-            { type: TYPES.DIRT, label: 'DIRT', color: this.game.currentTheme[TYPES.DIRT] },
-            { type: TYPES.WALL, label: 'WALL', color: this.game.currentTheme[TYPES.WALL] },
-            { type: TYPES.ROCK, label: 'ROCK', color: this.game.currentTheme[TYPES.ROCK] },
-            { type: TYPES.DIAMOND, label: 'DIAM', color: this.game.currentTheme[TYPES.DIAMOND] },
-            { type: TYPES.PLAYER, label: 'START', color: this.game.currentTheme[TYPES.PLAYER] },
-            { type: TYPES.ENEMY, label: 'ENEMY', color: this.game.currentTheme[TYPES.ENEMY] },
-            { type: TYPES.EXIT, label: 'EXIT', color: this.game.currentTheme[TYPES.EXIT] },
-            { type: TYPES.DYNAMITE_PICKUP, label: 'TNT', color: this.game.currentTheme[TYPES.DYNAMITE_PICKUP] },
-            { type: TYPES.STEEL, label: 'STEEL', color: '#607d8b' },
-            { type: TYPES.MAGIC_WALL, label: 'MAGIC', color: '#7e57c2' },
-            { type: TYPES.AMOEBA, label: 'AMOEBA', color: '#00e676' }
+            { type: TYPES.EMPTY, labelKey: 'palette.empty', color: '#000' },
+            { type: TYPES.DIRT, labelKey: 'palette.dirt', color: this.game.currentTheme[TYPES.DIRT] },
+            { type: TYPES.WALL, labelKey: 'palette.wall', color: this.game.currentTheme[TYPES.WALL] },
+            { type: TYPES.ROCK, labelKey: 'palette.rock', color: this.game.currentTheme[TYPES.ROCK] },
+            { type: TYPES.DIAMOND, labelKey: 'palette.diamond', color: this.game.currentTheme[TYPES.DIAMOND] },
+            { type: TYPES.PLAYER, labelKey: 'palette.player', color: this.game.currentTheme[TYPES.PLAYER] },
+            { type: TYPES.ENEMY, labelKey: 'palette.enemy', color: this.game.currentTheme[TYPES.ENEMY] },
+            { type: TYPES.EXIT, labelKey: 'palette.exit', color: this.game.currentTheme[TYPES.EXIT] },
+            { type: TYPES.DYNAMITE_PICKUP, labelKey: 'palette.tnt', color: this.game.currentTheme[TYPES.DYNAMITE_PICKUP] },
+            { type: TYPES.STEEL, labelKey: 'palette.steel', color: '#607d8b' },
+            { type: TYPES.MAGIC_WALL, labelKey: 'palette.magic', color: '#7e57c2' },
+            { type: TYPES.AMOEBA, labelKey: 'palette.amoeba', color: '#00e676' }
         ];
 
         tiles.forEach((tile) => {
@@ -154,7 +155,7 @@ class LevelEditor {
             el.className = 'palette-item';
             if (tile.type === this.selectedTile) el.classList.add('selected');
             el.style.backgroundColor = tile.color;
-            el.innerText = tile.label;
+            el.innerText = t(tile.labelKey);
             el.onclick = () => {
                 this.selectedTile = tile.type;
                 this.updatePaletteUI();
@@ -536,13 +537,13 @@ class LevelEditor {
     }
 
     getEnemyTypeName() {
-        const typeNames = {
-            [ENEMY_TYPES.BASIC]: 'BASIC',
-            [ENEMY_TYPES.SEEKER]: 'SEEKER',
-            [ENEMY_TYPES.PATROLLER]: 'PATROLLER',
-            [ENEMY_TYPES.BUTTERFLY]: 'BUTTERFLY'
+        const typeKeys = {
+            [ENEMY_TYPES.BASIC]: 'enemy.basic',
+            [ENEMY_TYPES.SEEKER]: 'enemy.seeker',
+            [ENEMY_TYPES.PATROLLER]: 'enemy.patroller',
+            [ENEMY_TYPES.BUTTERFLY]: 'enemy.butterfly'
         };
-        return typeNames[this.selectedEnemyType] || 'BASIC';
+        return t(typeKeys[this.selectedEnemyType] || 'enemy.basic');
     }
 
     updateControlsUI() {
@@ -581,24 +582,24 @@ class LevelEditor {
                 save: 'LT', load: 'RT', tool: 'LB/RB', erase: 'B', place: 'A'
             };
 
-            hints.exit.innerText = `${labels.exit} / L: Exit`;
-            hints.grid.innerText = `${labels.grid} / G: Grid`;
-            hints.enemy.innerHTML = `${labels.enemy} / E: Enemy (<span id="enemy-type-indicator">${this.getEnemyTypeName()}</span>)`;
-            hints.test.innerText = `${labels.test} / T: Test Play`;
-            hints.save.innerText = `${labels.save} / S: Save`;
-            hints.load.innerText = `${labels.load} / O: Load`;
-            hints.tool.innerText = `${labels.tool} / 1-8: Tool`;
-            hints.erase.innerText = `${labels.erase} / R-Click: Erase (${labels.place}: Place)`;
+            hints.exit.innerText = `${labels.exit} / L: ${t('editor.hintExit')}`;
+            hints.grid.innerText = `${labels.grid} / G: ${t('editor.hintGrid')}`;
+            hints.enemy.innerHTML = `${labels.enemy} / E: ${t('editor.hintEnemy')} (<span id="enemy-type-indicator">${this.getEnemyTypeName()}</span>)`;
+            hints.test.innerText = `${labels.test} / T: ${t('editor.hintTest')}`;
+            hints.save.innerText = `${labels.save} / S: ${t('editor.hintSave')}`;
+            hints.load.innerText = `${labels.load} / O: ${t('editor.hintLoad')}`;
+            hints.tool.innerText = `${labels.tool} / 1-8: ${t('editor.hintTool')}`;
+            hints.erase.innerText = `${labels.erase} / R-Click: ${t('editor.hintErase')} (${labels.place}: ${t('editor.hintPlace')})`;
         } else {
             // Keyboard Defaults
-            hints.exit.innerText = 'L: Exit Editor';
-            hints.grid.innerText = 'G: Toggle Grid';
-            hints.enemy.innerHTML = 'E: Cycle Enemy (<span id="enemy-type-indicator">' + this.getEnemyTypeName() + '</span>)';
-            hints.test.innerText = 'T: Test Play';
-            hints.save.innerText = 'S: Save';
-            hints.load.innerText = 'O: Load';
-            hints.tool.innerText = '1-8: Select Tool';
-            hints.erase.innerText = 'Right Click: Erase';
+            hints.exit.innerText = `L: ${t('editor.hintExit')}`;
+            hints.grid.innerText = `G: ${t('editor.hintGrid')}`;
+            hints.enemy.innerHTML = `E: ${t('editor.hintEnemy')} (<span id="enemy-type-indicator">${this.getEnemyTypeName()}</span>)`;
+            hints.test.innerText = `T: ${t('editor.hintTest')}`;
+            hints.save.innerText = `S: ${t('editor.hintSave')}`;
+            hints.load.innerText = `O: ${t('editor.hintLoad')}`;
+            hints.tool.innerText = `1-8: ${t('editor.hintTool')}`;
+            hints.erase.innerText = `R-Click: ${t('editor.hintErase')}`;
         }
     }
 
@@ -655,7 +656,7 @@ class LevelEditor {
         const indicator = document.getElementById('enemy-type-indicator');
         if (indicator) {
             const originalText = indicator.innerText;
-            indicator.innerText = 'SAVED!';
+            indicator.innerText = t('editor.saved');
             setTimeout(() => {
                 indicator.innerText = originalText;
             }, 1000);
@@ -725,7 +726,7 @@ class LevelEditor {
             const indicator = document.getElementById('enemy-type-indicator');
             if (indicator) {
                 const originalText = indicator.innerText;
-                indicator.innerText = 'COPIED!';
+                indicator.innerText = t('editor.copied');
                 setTimeout(() => {
                     indicator.innerText = originalText;
                 }, 1500);
@@ -757,7 +758,7 @@ class LevelEditor {
         const indicator = document.getElementById('enemy-type-indicator');
         if (indicator) {
             const originalText = indicator.innerText;
-            indicator.innerText = 'DOWNLOADED!';
+            indicator.innerText = t('editor.downloaded');
             setTimeout(() => {
                 indicator.innerText = originalText;
             }, 1500);
@@ -771,7 +772,7 @@ class LevelEditor {
             const indicator = document.getElementById('enemy-type-indicator');
             if (indicator) {
                 const originalText = indicator.innerText;
-                indicator.innerText = 'NO SAVE!';
+                indicator.innerText = t('editor.noSave');
                 setTimeout(() => {
                     indicator.innerText = originalText;
                 }, 1000);
@@ -792,7 +793,7 @@ class LevelEditor {
             const indicator = document.getElementById('enemy-type-indicator');
             if (indicator) {
                 const originalText = indicator.innerText;
-                indicator.innerText = 'LOADED!';
+                indicator.innerText = t('editor.loaded');
                 setTimeout(() => {
                     indicator.innerText = originalText;
                 }, 1000);
