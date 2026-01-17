@@ -23,46 +23,59 @@
 </head>
 
 <body>
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
+    <div id="game-container" role="application" aria-label="Neon Dash Game">
+        <canvas id="gameCanvas" aria-hidden="true"></canvas>
         <div id="ui-layer">
-            <div class="hud-panel">
-                <div class="hud-item"><span data-i18n="hud.score">SCORE</span>: <span id="score">00000</span></div>
-                <div class="hud-item"><span data-i18n="hud.diamonds">DIAMONDS</span>: <span id="diamonds">0/10</span>
+            <div class="hud-panel" role="status" aria-live="polite" aria-atomic="true">
+                <div class="hud-item" aria-label="Score"><span data-i18n="hud.score">SCORE</span>: <span
+                        id="score">00000</span></div>
+                <div class="hud-item" aria-label="Diamonds"><span data-i18n="hud.diamonds">DIAMONDS</span>: <span
+                        id="diamonds">0/10</span>
                 </div>
-                <div class="hud-item" style="color: #ff4444;"><span data-i18n="hud.tnt">TNT</span>: <span
-                        id="dynamite">0</span></div>
-                <div class="hud-item"><span data-i18n="hud.time">TIME</span>: <span id="time">000</span></div>
-                <div class="hud-item"><span data-i18n="hud.level">LEVEL</span>: <span id="level">1</span></div>
+                <div class="hud-item" style="color: #ff4444;" aria-label="TNT"><span data-i18n="hud.tnt">TNT</span>:
+                    <span id="dynamite">0</span></div>
+                <div class="hud-item" aria-label="Time"><span data-i18n="hud.time">TIME</span>: <span
+                        id="time">000</span></div>
+                <div class="hud-item" aria-label="Level"><span data-i18n="hud.level">LEVEL</span>: <span
+                        id="level">1</span></div>
             </div>
 
             <div id="fps-counter" class="hidden">FPS: <span id="fps">60</span></div>
 
-            <div id="menu-screen">
+            <div id="menu-screen" role="menu" aria-label="Main Menu">
                 <h1 class="game-title">NEON DASH</h1>
                 <div class="menu-buttons-container">
-                    <button id="btn-campaign" class="menu-button primary" data-i18n="menu.campaign">CAMPAIGN</button>
-                    <button id="btn-endless" class="menu-button" data-i18n="menu.endless">ENDLESS</button>
-                    <button id="btn-hardcore" class="menu-button danger" data-i18n="menu.hardcore">HARDCORE</button>
-                    <button id="btn-rogue" class="menu-button special" data-i18n="menu.rogue">ROGUE MINER</button>
-                    <button id="btn-load-level" class="menu-button" data-i18n="menu.loadLevel">LOAD LEVEL</button>
-                    <button id="btn-editor" class="menu-button" data-i18n="menu.editor">LEVEL EDITOR</button>
-                    <button id="btn-help" class="menu-button" data-i18n="menu.help">HELP</button>
+                    <button id="btn-campaign" class="menu-button primary" role="menuitem"
+                        data-i18n="menu.campaign">CAMPAIGN</button>
+                    <button id="btn-endless" class="menu-button" role="menuitem"
+                        data-i18n="menu.endless">ENDLESS</button>
+                    <button id="btn-hardcore" class="menu-button danger" role="menuitem"
+                        data-i18n="menu.hardcore">HARDCORE</button>
+                    <button id="btn-rogue" class="menu-button special" role="menuitem" data-i18n="menu.rogue">ROGUE
+                        MINER</button>
+                    <button id="btn-load-level" class="menu-button" role="menuitem" data-i18n="menu.loadLevel">LOAD
+                        LEVEL</button>
+                    <button id="btn-editor" class="menu-button" role="menuitem" data-i18n="menu.editor">LEVEL
+                        EDITOR</button>
+                    <button id="btn-help" class="menu-button" role="menuitem" data-i18n="menu.help">HELP</button>
                 </div>
                 <p class="menu-hint" data-i18n="menu.hint">Select a Game Mode to Start</p>
             </div>
 
-            <div id="load-level-modal" class="hidden">
+            <div id="load-level-modal" class="hidden" role="dialog" aria-modal="true"
+                aria-labelledby="load-modal-title">
                 <div class="modal-content">
-                    <h2 data-i18n="load.title">LOAD LEVEL</h2>
+                    <h2 id="load-modal-title" data-i18n="load.title">LOAD LEVEL</h2>
                     <p data-i18n="load.desc">Load from URL or local file</p>
-                    <input type="text" id="level-url-input" placeholder="https://example.com/level.json">
+                    <input type="text" id="level-url-input" placeholder="https://example.com/level.json"
+                        aria-label="Level URL">
                     <div class="file-input-wrapper">
                         <span data-i18n="load.or">OR</span>
                         <label for="level-file-input" class="file-label" data-i18n="load.chooseFile">📁 Choose
                             File</label>
-                        <input type="file" id="level-file-input" accept=".json" style="display: none;">
-                        <span id="file-name-display"></span>
+                        <input type="file" id="level-file-input" accept=".json" style="display: none;"
+                            aria-label="Choose level file">
+                        <span id="file-name-display" aria-live="polite"></span>
                     </div>
                     <div class="modal-buttons">
                         <button id="btn-load-confirm" class="menu-button" data-i18n="load.confirm">LOAD</button>
@@ -71,11 +84,12 @@
                 </div>
             </div>
 
-            <div id="level-selector-modal" class="hidden">
+            <div id="level-selector-modal" class="hidden" role="dialog" aria-modal="true"
+                aria-labelledby="level-selector-title">
                 <div class="modal-content level-selector-content">
-                    <h2 data-i18n="levelSelect.title">SELECT LEVEL</h2>
+                    <h2 id="level-selector-title" data-i18n="levelSelect.title">SELECT LEVEL</h2>
                     <p id="level-pack-info" data-i18n="levelSelect.pack">Level Pack</p>
-                    <div id="level-list" class="level-list">
+                    <div id="level-list" class="level-list" role="listbox" aria-label="Available levels">
                         <!-- Level items dynamically injected by JS -->
                     </div>
                     <div class="modal-buttons">
@@ -86,51 +100,56 @@
                 </div>
             </div>
 
-            <div id="message-overlay" class="hidden">
+            <div id="message-overlay" class="hidden" role="alert" aria-live="assertive">
                 <h1 id="message-title" data-i18n="msg.ready">READY?</h1>
                 <p id="message-subtitle" data-i18n="msg.pressKey">Press ANY KEY to Start</p>
                 <button id="message-restart-btn" class="menu-button hidden" data-i18n="msg.restart">RESTART</button>
             </div>
 
-            <div id="pause-overlay" class="hidden">
+            <div id="pause-overlay" class="hidden" role="menu" aria-label="Pause Menu">
                 <h1 data-i18n="pause.title">PAUSED</h1>
                 <div class="pause-menu-buttons">
-                    <button id="btn-resume" class="menu-button" data-i18n="pause.resume">RESUME</button>
-                    <button id="btn-back-editor" class="menu-button special hidden" data-i18n="pause.backEditor">BACK TO
+                    <button id="btn-resume" class="menu-button" role="menuitem" data-i18n="pause.resume">RESUME</button>
+                    <button id="btn-back-editor" class="menu-button special hidden" role="menuitem"
+                        data-i18n="pause.backEditor">BACK TO
                         EDITOR</button>
-                    <button id="btn-restart" class="menu-button" data-i18n="pause.restart">RESTART LEVEL</button>
-                    <button id="btn-sound" class="menu-button" data-i18n="pause.soundOn">SOUND: ON</button>
-                    <button id="btn-fullscreen" class="menu-button" data-i18n="pause.fullscreen">FULLSCREEN</button>
-                    <button id="btn-menu" class="menu-button" data-i18n="pause.exitMenu">EXIT TO MENU</button>
+                    <button id="btn-restart" class="menu-button" role="menuitem" data-i18n="pause.restart">RESTART
+                        LEVEL</button>
+                    <button id="btn-sound" class="menu-button" role="menuitem" aria-pressed="true"
+                        data-i18n="pause.soundOn">SOUND: ON</button>
+                    <button id="btn-fullscreen" class="menu-button" role="menuitem"
+                        data-i18n="pause.fullscreen">FULLSCREEN</button>
+                    <button id="btn-menu" class="menu-button" role="menuitem" data-i18n="pause.exitMenu">EXIT TO
+                        MENU</button>
                 </div>
             </div>
 
-            <div id="perk-select-overlay" class="hidden">
-                <h1 data-i18n="perk.title">CHOOSE YOUR UPGRADE</h1>
-                <p id="perk-depth-info">Depth 1 Complete!</p>
-                <div class="perk-cards">
-                    <div class="perk-card" id="perk-card-0" tabindex="0">
-                        <span class="perk-icon">⛏️</span>
+            <div id="perk-select-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="perk-title">
+                <h1 id="perk-title" data-i18n="perk.title">CHOOSE YOUR UPGRADE</h1>
+                <p id="perk-depth-info" aria-live="polite">Depth 1 Complete!</p>
+                <div class="perk-cards" role="listbox" aria-label="Available upgrades">
+                    <div class="perk-card" id="perk-card-0" tabindex="0" role="option" aria-selected="false">
+                        <span class="perk-icon" aria-hidden="true">⛏️</span>
                         <h3 class="perk-name">Drill Bit+</h3>
                         <p class="perk-desc">Digging speed +20%</p>
                     </div>
-                    <div class="perk-card" id="perk-card-1" tabindex="0">
-                        <span class="perk-icon">🏃</span>
+                    <div class="perk-card" id="perk-card-1" tabindex="0" role="option" aria-selected="false">
+                        <span class="perk-icon" aria-hidden="true">🏃</span>
                         <h3 class="perk-name">Runner</h3>
                         <p class="perk-desc">Movement speed +10%</p>
                     </div>
-                    <div class="perk-card" id="perk-card-2" tabindex="0">
-                        <span class="perk-icon">⛑️</span>
+                    <div class="perk-card" id="perk-card-2" tabindex="0" role="option" aria-selected="false">
+                        <span class="perk-icon" aria-hidden="true">⛑️</span>
                         <h3 class="perk-name">Hard Hat</h3>
                         <p class="perk-desc">Blocks first damage per level</p>
                     </div>
                 </div>
             </div>
 
-            <div id="help-modal" class="hidden">
+            <div id="help-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
                 <div class="modal-content help-modal-content">
-                    <h2 data-i18n="help.title">📖 GAME GUIDE</h2>
-                    <div class="help-scroll-area">
+                    <h2 id="help-modal-title" data-i18n="help.title">📖 GAME GUIDE</h2>
+                    <div class="help-scroll-area" role="document">
                         <!-- Content dynamically generated by i18n.js -->
                     </div>
                     <div class="modal-buttons">
@@ -143,33 +162,37 @@
             <button id="btn-settings-float" class="settings-float-btn" aria-label="Settings">⚙️</button>
 
             <!-- Settings Modal -->
-            <div id="settings-modal" class="hidden">
+            <div id="settings-modal" class="hidden" role="dialog" aria-modal="true"
+                aria-labelledby="settings-modal-title">
                 <div class="modal-content settings-modal-content">
-                    <h2 data-i18n="settings.title">⚙️ SETTINGS</h2>
+                    <h2 id="settings-modal-title" data-i18n="settings.title">⚙️ SETTINGS</h2>
 
-                    <div class="settings-section">
-                        <h3 data-i18n="settings.audio">🔊 Audio</h3>
+                    <div class="settings-section" role="group" aria-labelledby="audio-heading">
+                        <h3 id="audio-heading" data-i18n="settings.audio">🔊 Audio</h3>
                         <div class="setting-row">
-                            <label data-i18n="settings.master">Master</label>
-                            <input type="range" id="volume-master" min="0" max="100" value="80">
-                            <span id="volume-master-value">80%</span>
+                            <label for="volume-master" data-i18n="settings.master">Master</label>
+                            <input type="range" id="volume-master" min="0" max="100" value="80" aria-valuemin="0"
+                                aria-valuemax="100" aria-valuenow="80">
+                            <span id="volume-master-value" aria-hidden="true">80%</span>
                         </div>
                         <div class="setting-row">
-                            <label data-i18n="settings.music">Music</label>
-                            <input type="range" id="volume-music" min="0" max="100" value="60">
-                            <span id="volume-music-value">60%</span>
+                            <label for="volume-music" data-i18n="settings.music">Music</label>
+                            <input type="range" id="volume-music" min="0" max="100" value="60" aria-valuemin="0"
+                                aria-valuemax="100" aria-valuenow="60">
+                            <span id="volume-music-value" aria-hidden="true">60%</span>
                         </div>
                         <div class="setting-row">
-                            <label data-i18n="settings.sfx">SFX</label>
-                            <input type="range" id="volume-sfx" min="0" max="100" value="100">
-                            <span id="volume-sfx-value">100%</span>
+                            <label for="volume-sfx" data-i18n="settings.sfx">SFX</label>
+                            <input type="range" id="volume-sfx" min="0" max="100" value="100" aria-valuemin="0"
+                                aria-valuemax="100" aria-valuenow="100">
+                            <span id="volume-sfx-value" aria-hidden="true">100%</span>
                         </div>
                     </div>
 
-                    <div class="settings-section">
-                        <h3 data-i18n="settings.accessibility">♿ Accessibility</h3>
+                    <div class="settings-section" role="group" aria-labelledby="accessibility-heading">
+                        <h3 id="accessibility-heading" data-i18n="settings.accessibility">♿ Accessibility</h3>
                         <div class="setting-row">
-                            <label data-i18n="settings.colorblind">Colorblind</label>
+                            <label for="colorblind-mode" data-i18n="settings.colorblind">Colorblind</label>
                             <select id="colorblind-mode">
                                 <option value="off" data-i18n="settings.cb.off">Off</option>
                                 <option value="deuteranopia" data-i18n="settings.cb.deut">Deuteranopia</option>
@@ -179,10 +202,10 @@
                         </div>
                     </div>
 
-                    <div class="settings-section">
-                        <h3 data-i18n="settings.display">🖥️ Display</h3>
+                    <div class="settings-section" role="group" aria-labelledby="display-heading">
+                        <h3 id="display-heading" data-i18n="settings.display">🖥️ Display</h3>
                         <div class="setting-row">
-                            <label data-i18n="settings.language">Language</label>
+                            <label for="language-select" data-i18n="settings.language">Language</label>
                             <select id="language-select">
                                 <option value="hu">Magyar</option>
                                 <option value="en">English</option>
@@ -195,7 +218,7 @@
                             </select>
                         </div>
                         <div class="setting-row">
-                            <label data-i18n="settings.fullscreen">Fullscreen</label>
+                            <label for="btn-settings-fullscreen" data-i18n="settings.fullscreen">Fullscreen</label>
                             <button id="btn-settings-fullscreen" class="settings-toggle-btn"
                                 data-i18n="settings.toggle">Toggle</button>
                         </div>
@@ -206,16 +229,17 @@
                     </div>
                 </div>
             </div>
-            <div id="editor-overlay" class="hidden">
+            <div id="editor-overlay" class="hidden" role="toolbar" aria-label="Level Editor">
                 <div id="editor-toolbar">
-                    <div id="editor-palette">
+                    <div id="editor-palette" role="listbox" aria-label="Object palette">
                         <!-- Palette items injected by JS -->
                     </div>
                 </div>
-                <div id="editor-info">
+                <div id="editor-info" aria-label="Editor shortcuts">
                     <span id="hint-exit">L: Exit Editor</span>
                     <span id="hint-grid">G: Toggle Grid</span>
-                    <span id="hint-enemy">E: Cycle Enemy (<span id="enemy-type-indicator">BASIC</span>)</span>
+                    <span id="hint-enemy">E: Cycle Enemy (<span id="enemy-type-indicator"
+                            aria-live="polite">BASIC</span>)</span>
                     <span id="hint-test">T: Test Play</span>
                     <span id="hint-save">S: Save</span>
                     <span id="hint-load">O: Load</span>
@@ -223,45 +247,47 @@
                     <span id="hint-erase">Right Click: Erase</span>
                 </div>
                 <div id="editor-export">
-                    <button id="btn-copy-level" class="export-btn" data-i18n="editor.copyJson">📋 Copy JSON</button>
-                    <button id="btn-download-level" class="export-btn" data-i18n="editor.download">💾 Download</button>
+                    <button id="btn-copy-level" class="export-btn" aria-label="Copy level JSON to clipboard"
+                        data-i18n="editor.copyJson">📋 Copy JSON</button>
+                    <button id="btn-download-level" class="export-btn" aria-label="Download level as JSON file"
+                        data-i18n="editor.download">💾 Download</button>
                 </div>
                 <!-- Mobile Editor Toolbar -->
-                <div id="editor-mobile-toolbar" class="mobile-only">
-                    <button id="editor-btn-exit" class="editor-mobile-btn">✖<br><span
+                <div id="editor-mobile-toolbar" class="mobile-only" role="toolbar" aria-label="Mobile editor tools">
+                    <button id="editor-btn-exit" class="editor-mobile-btn" aria-label="Exit editor">✖<br><span
                             data-i18n="editor.exit">EXIT</span></button>
-                    <button id="editor-btn-erase" class="editor-mobile-btn">🗑️<br><span
+                    <button id="editor-btn-erase" class="editor-mobile-btn" aria-label="Erase mode">🗑️<br><span
                             data-i18n="editor.erase">ERASE</span></button>
-                    <button id="editor-btn-enemy" class="editor-mobile-btn">👾<br><span
-                            id="mob-enemy-type">BASIC</span></button>
-                    <button id="editor-btn-grid" class="editor-mobile-btn">⊞<br><span
-                            data-i18n="editor.grid">GRID</span></button>
-                    <button id="editor-btn-test" class="editor-mobile-btn">▶<br><span
+                    <button id="editor-btn-enemy" class="editor-mobile-btn" aria-label="Cycle enemy type">👾<br><span
+                            id="mob-enemy-type" aria-live="polite">BASIC</span></button>
+                    <button id="editor-btn-grid" class="editor-mobile-btn" aria-label="Toggle grid"
+                        aria-pressed="false">⊞<br><span data-i18n="editor.grid">GRID</span></button>
+                    <button id="editor-btn-test" class="editor-mobile-btn" aria-label="Test play level">▶<br><span
                             data-i18n="editor.test">TEST</span></button>
-                    <button id="editor-btn-save" class="editor-mobile-btn">💾<br><span
+                    <button id="editor-btn-save" class="editor-mobile-btn" aria-label="Save level">💾<br><span
                             data-i18n="editor.save">SAVE</span></button>
-                    <button id="editor-btn-load" class="editor-mobile-btn">📂<br><span
+                    <button id="editor-btn-load" class="editor-mobile-btn" aria-label="Load level">📂<br><span
                             data-i18n="editor.load">LOAD</span></button>
-                    <button id="editor-btn-copy" class="editor-mobile-btn">📋<br><span
-                            data-i18n="editor.copy">COPY</span></button>
-                    <button id="editor-btn-download" class="editor-mobile-btn">⬇️<br><span
-                            data-i18n="editor.json">JSON</span></button>
+                    <button id="editor-btn-copy" class="editor-mobile-btn"
+                        aria-label="Copy JSON to clipboard">📋<br><span data-i18n="editor.copy">COPY</span></button>
+                    <button id="editor-btn-download" class="editor-mobile-btn"
+                        aria-label="Download JSON file">⬇️<br><span data-i18n="editor.json">JSON</span></button>
                 </div>
             </div>
 
             <!-- Mobile Touch Controls -->
-            <div id="mobile-controls" class="mobile-only">
-                <div id="dpad">
-                    <button class="dpad-btn dpad-up" data-direction="up">▲</button>
-                    <button class="dpad-btn dpad-down" data-direction="down">▼</button>
-                    <button class="dpad-btn dpad-left" data-direction="left">◀</button>
-                    <button class="dpad-btn dpad-right" data-direction="right">▶</button>
-                    <div class="dpad-center"></div>
+            <div id="mobile-controls" class="mobile-only" role="group" aria-label="Game controls">
+                <div id="dpad" role="group" aria-label="Direction pad">
+                    <button class="dpad-btn dpad-up" data-direction="up" aria-label="Move up">▲</button>
+                    <button class="dpad-btn dpad-down" data-direction="down" aria-label="Move down">▼</button>
+                    <button class="dpad-btn dpad-left" data-direction="left" aria-label="Move left">◀</button>
+                    <button class="dpad-btn dpad-right" data-direction="right" aria-label="Move right">▶</button>
+                    <div class="dpad-center" aria-hidden="true"></div>
                 </div>
-                <div id="action-buttons">
-                    <button id="mobile-tnt-btn" class="action-btn">💣<br><span
+                <div id="action-buttons" role="group" aria-label="Action buttons">
+                    <button id="mobile-tnt-btn" class="action-btn" aria-label="Use TNT">💣<br><span
                             data-i18n="mobile.tnt">TNT</span></button>
-                    <button id="mobile-pause-btn" class="action-btn">⏸<br><span
+                    <button id="mobile-pause-btn" class="action-btn" aria-label="Pause game">⏸<br><span
                             data-i18n="mobile.pause">PAUSE</span></button>
                 </div>
             </div>
