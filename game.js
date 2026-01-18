@@ -298,6 +298,140 @@ const gameSettings = {
     tutorialCompleted: localStorage.getItem('tutorialCompleted') === 'true'
 };
 
+// Achievements System
+const ACHIEVEMENTS = [
+    { id: 'firstSteps', icon: '👣', category: 'progress' },
+    { id: 'minerComplete', icon: '⛏️', category: 'progress' },
+    { id: 'endlessRunner', icon: '🏃', category: 'progress' },
+    { id: 'deepDigger', icon: '🕳️', category: 'progress' },
+    { id: 'gemCollector', icon: '💎', category: 'collect' },
+    { id: 'diamondHoarder', icon: '👑', category: 'collect' },
+    { id: 'perfectLevel', icon: '✨', category: 'collect' },
+    { id: 'crusher', icon: '🪨', category: 'combat' },
+    { id: 'demolitionExpert', icon: '💥', category: 'combat' },
+    { id: 'speedrunner', icon: '⚡', category: 'challenge' },
+    { id: 'survivor', icon: '💀', category: 'challenge' }
+];
+
+// Player stats (persisted to localStorage)
+const playerStats = {
+    totalDiamonds: parseInt(localStorage.getItem('stats_totalDiamonds')) || 0,
+    totalEnemiesKilledByRock: parseInt(localStorage.getItem('stats_enemiesKilledByRock')) || 0,
+    totalEnemiesKilledByTNT: parseInt(localStorage.getItem('stats_enemiesKilledByTNT')) || 0,
+    levelsCompleted: parseInt(localStorage.getItem('stats_levelsCompleted')) || 0,
+    campaignCompleted: localStorage.getItem('stats_campaignCompleted') === 'true',
+    maxEndlessLevel: parseInt(localStorage.getItem('stats_maxEndlessLevel')) || 0,
+    maxRogueDepth: parseInt(localStorage.getItem('stats_maxRogueDepth')) || 0,
+    maxHardcoreLevel: parseInt(localStorage.getItem('stats_maxHardcoreLevel')) || 0
+};
+
+// Unlocked achievements (persisted to localStorage)
+const unlockedAchievements = JSON.parse(localStorage.getItem('unlockedAchievements')) || [];
+
+// Achievement unlock function
+function unlockAchievement(id) {
+    if (unlockedAchievements.includes(id)) return false;
+
+    unlockedAchievements.push(id);
+    localStorage.setItem('unlockedAchievements', JSON.stringify(unlockedAchievements));
+
+    // Show popup notification
+    showAchievementPopup(id);
+
+    // Play sound
+    if (window.game && window.game.sound) {
+        window.game.sound.playWin();
+    }
+
+    return true;
+}
+
+// Show achievement popup
+function showAchievementPopup(id) {
+    const achievement = ACHIEVEMENTS.find(a => a.id === id);
+    if (!achievement) return;
+
+    const popup = document.getElementById('achievement-popup');
+    if (!popup) return;
+
+    const iconEl = popup.querySelector('.achievement-popup-icon');
+    const nameEl = popup.querySelector('.achievement-popup-name');
+    const descEl = popup.querySelector('.achievement-popup-desc');
+
+    iconEl.textContent = achievement.icon;
+    nameEl.textContent = typeof t === 'function' ? t(`achievement.${id}.name`) : id;
+    descEl.textContent = typeof t === 'function' ? t(`achievement.${id}.desc`) : '';
+
+    popup.classList.remove('hidden');
+    popup.classList.add('show');
+
+    // Hide after 3 seconds
+    setTimeout(() => {
+        popup.classList.remove('show');
+        setTimeout(() => popup.classList.add('hidden'), 500);
+    }, 3000);
+}
+
+// Check and unlock achievements based on current stats
+function checkAchievements(game) {
+    // First Steps - Complete first level
+    if (playerStats.levelsCompleted >= 1) {
+        unlockAchievement('firstSteps');
+    }
+
+    // Miner Complete - Campaign finished
+    if (playerStats.campaignCompleted) {
+        unlockAchievement('minerComplete');
+    }
+
+    // Endless Runner - 10 levels in endless mode
+    if (playerStats.maxEndlessLevel >= 10) {
+        unlockAchievement('endlessRunner');
+    }
+
+    // Deep Digger - Rogue depth 20
+    if (playerStats.maxRogueDepth >= 20) {
+        unlockAchievement('deepDigger');
+    }
+
+    // Gem Collector - 100 total diamonds
+    if (playerStats.totalDiamonds >= 100) {
+        unlockAchievement('gemCollector');
+    }
+
+    // Diamond Hoarder - 1000 total diamonds
+    if (playerStats.totalDiamonds >= 1000) {
+        unlockAchievement('diamondHoarder');
+    }
+
+    // Crusher - Kill enemy with rock
+    if (playerStats.totalEnemiesKilledByRock >= 1) {
+        unlockAchievement('crusher');
+    }
+
+    // Demolition Expert - 10 enemies with TNT
+    if (playerStats.totalEnemiesKilledByTNT >= 10) {
+        unlockAchievement('demolitionExpert');
+    }
+
+    // Survivor - 5+ levels in hardcore
+    if (playerStats.maxHardcoreLevel >= 5) {
+        unlockAchievement('survivor');
+    }
+}
+
+// Save stats to localStorage
+function savePlayerStats() {
+    localStorage.setItem('stats_totalDiamonds', playerStats.totalDiamonds);
+    localStorage.setItem('stats_enemiesKilledByRock', playerStats.totalEnemiesKilledByRock);
+    localStorage.setItem('stats_enemiesKilledByTNT', playerStats.totalEnemiesKilledByTNT);
+    localStorage.setItem('stats_levelsCompleted', playerStats.levelsCompleted);
+    localStorage.setItem('stats_campaignCompleted', playerStats.campaignCompleted);
+    localStorage.setItem('stats_maxEndlessLevel', playerStats.maxEndlessLevel);
+    localStorage.setItem('stats_maxRogueDepth', playerStats.maxRogueDepth);
+    localStorage.setItem('stats_maxHardcoreLevel', playerStats.maxHardcoreLevel);
+}
+
 // Default to first theme initially
 let COLORS = THEMES[0];
 
@@ -1615,6 +1749,7 @@ class Game {
 
         this.diamondsNeeded = levelDef.diamondsNeeded;
         this.timeLeft = levelDef.time;
+        this.initialTime = levelDef.time; // Track initial time for speedrunner achievement
         this.diamondsCollected = 0;
         this.dynamiteCount = 0;
         this.bombs = [];
@@ -4682,6 +4817,11 @@ class Game {
         this.score += diamondScore;
         this.diamondsCollected++;
 
+        // Track total diamonds for achievements
+        playerStats.totalDiamonds++;
+        savePlayerStats();
+        checkAchievements(this);
+
         // Trigger Flash if Exit opens
         if (this.diamondsCollected === this.diamondsNeeded) {
             this.flashTimer = 150; // 150ms white flash
@@ -4742,6 +4882,10 @@ class Game {
                         if (enemyIndex !== -1) {
                             this.enemies.splice(enemyIndex, 1);
                             this.score += 50;
+                            // Track TNT kills for achievements
+                            playerStats.totalEnemiesKilledByTNT++;
+                            savePlayerStats();
+                            checkAchievements(this);
                         }
                         this.grid[y][x] = TYPES.EMPTY;
                         this.spawnParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, '#ff0000', 20);
@@ -5070,7 +5214,7 @@ class Game {
         }
     }
 
-    killEnemyAt(x, y) {
+    killEnemyAt(x, y, killSource = 'rock') {
         const enemyIndex = this.enemies.findIndex(e => e.x === x && e.y === y);
         if (enemyIndex === -1) return;
 
@@ -5078,6 +5222,15 @@ class Game {
         this.enemies.splice(enemyIndex, 1);
         this.score += 50;
         this.spawnParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, '#ff0000', 20);
+
+        // Track enemy kills for achievements
+        if (killSource === 'rock') {
+            playerStats.totalEnemiesKilledByRock++;
+        } else if (killSource === 'tnt') {
+            playerStats.totalEnemiesKilledByTNT++;
+        }
+        savePlayerStats();
+        checkAchievements(this);
 
         this.grid[y][x] = TYPES.EMPTY;
 
@@ -5237,6 +5390,46 @@ class Game {
 
         this.score += Math.floor(this.timeLeft) * 10; // Time bonus
         this.updateUI();
+
+        // Track level completion for achievements
+        playerStats.levelsCompleted++;
+
+        // Check for perfect level (all diamonds collected)
+        let totalDiamondsOnMap = 0;
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (this.grid[y][x] === TYPES.DIAMOND) totalDiamondsOnMap++;
+            }
+        }
+        if (totalDiamondsOnMap === 0 && this.diamondsCollected >= this.diamondsNeeded) {
+            unlockAchievement('perfectLevel');
+        }
+
+        // Check for speedrunner (level completed in under 30 seconds)
+        const levelTime = this.initialTime - this.timeLeft;
+        if (levelTime <= 30) {
+            unlockAchievement('speedrunner');
+        }
+
+        // Track mode-specific stats
+        if (this.gameMode === GAME_MODES.ENDLESS) {
+            if (this.currentLevelIndex + 1 > playerStats.maxEndlessLevel) {
+                playerStats.maxEndlessLevel = this.currentLevelIndex + 1;
+            }
+        } else if (this.gameMode === GAME_MODES.HARDCORE) {
+            if (this.currentLevelIndex + 1 > playerStats.maxHardcoreLevel) {
+                playerStats.maxHardcoreLevel = this.currentLevelIndex + 1;
+            }
+        } else if (this.gameMode === GAME_MODES.ROGUE) {
+            if (this.rogueDepth > playerStats.maxRogueDepth) {
+                playerStats.maxRogueDepth = this.rogueDepth;
+            }
+        } else if (this.gameMode === GAME_MODES.CAMPAIGN && this.currentLevelIndex >= LEVELS.length - 1) {
+            playerStats.campaignCompleted = true;
+        }
+
+        savePlayerStats();
+        checkAchievements(this);
 
         // Handle Rogue Miner Mode - show perk selection
         if (this.gameMode === GAME_MODES.ROGUE) {
