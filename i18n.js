@@ -253,7 +253,10 @@ const I18N = {
             "settings.language": "Language",
             "settings.fullscreen": "Fullscreen",
             "settings.toggle": "Toggle",
-            "settings.close": "BACK"
+            "settings.close": "BACK",
+            "settings.tutorial": "Tutorial Hints",
+            "settings.tutorialOn": "On",
+            "settings.tutorialOff": "Off"
         },
 
         // Hungarian
@@ -460,7 +463,10 @@ const I18N = {
             "settings.language": "Nyelv",
             "settings.fullscreen": "Teljes kép",
             "settings.toggle": "Váltás",
-            "settings.close": "VISSZA"
+            "settings.close": "VISSZA",
+            "settings.tutorial": "Tutorial tippek",
+            "settings.tutorialOn": "Be",
+            "settings.tutorialOff": "Ki"
         },
 
         // German
@@ -688,7 +694,10 @@ const I18N = {
             "settings.language": "Sprache",
             "settings.fullscreen": "Vollbild",
             "settings.toggle": "Umschalten",
-            "settings.close": "ZURÜCK"
+            "settings.close": "ZURÜCK",
+            "settings.tutorial": "Tutorial Hinweise",
+            "settings.tutorialOn": "An",
+            "settings.tutorialOff": "Aus"
         },
 
         // Spanish
@@ -916,7 +925,10 @@ const I18N = {
             "settings.language": "Idioma",
             "settings.fullscreen": "Pantalla completa",
             "settings.toggle": "Cambiar",
-            "settings.close": "VOLVER"
+            "settings.close": "VOLVER",
+            "settings.tutorial": "Consejos tutorial",
+            "settings.tutorialOn": "Sí",
+            "settings.tutorialOff": "No"
         },
 
         // French
@@ -1144,7 +1156,10 @@ const I18N = {
             "settings.language": "Langue",
             "settings.fullscreen": "Plein écran",
             "settings.toggle": "Basculer",
-            "settings.close": "RETOUR"
+            "settings.close": "RETOUR",
+            "settings.tutorial": "Conseils tutoriel",
+            "settings.tutorialOn": "Oui",
+            "settings.tutorialOff": "Non"
         },
 
         // Japanese
@@ -1372,7 +1387,10 @@ const I18N = {
             "settings.language": "言語",
             "settings.fullscreen": "フルスクリーン",
             "settings.toggle": "切替",
-            "settings.close": "戻る"
+            "settings.close": "戻る",
+            "settings.tutorial": "チュートリアルヒント",
+            "settings.tutorialOn": "オン",
+            "settings.tutorialOff": "オフ"
         },
 
         // Chinese Simplified
@@ -1600,7 +1618,10 @@ const I18N = {
             "settings.language": "语言",
             "settings.fullscreen": "全屏",
             "settings.toggle": "切换",
-            "settings.close": "返回"
+            "settings.close": "返回",
+            "settings.tutorial": "教程提示",
+            "settings.tutorialOn": "开",
+            "settings.tutorialOff": "关"
         },
 
         // Korean
@@ -1828,7 +1849,10 @@ const I18N = {
             "settings.language": "언어",
             "settings.fullscreen": "전체화면",
             "settings.toggle": "전환",
-            "settings.close": "뒤로"
+            "settings.close": "뒤로",
+            "settings.tutorial": "튜토리얼 힌트",
+            "settings.tutorialOn": "켜기",
+            "settings.tutorialOff": "끄기"
         }
     },
 

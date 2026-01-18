@@ -293,7 +293,9 @@ const COLORBLIND_THEMES = {
 // Game settings (persisted to localStorage)
 const gameSettings = {
     colorblindMode: localStorage.getItem('colorblindMode') || 'off',
-    language: localStorage.getItem('gameLanguage') || 'auto'
+    language: localStorage.getItem('gameLanguage') || 'auto',
+    tutorialEnabled: localStorage.getItem('tutorialEnabled') !== 'false',
+    tutorialCompleted: localStorage.getItem('tutorialCompleted') === 'true'
 };
 
 // Default to first theme initially
@@ -2573,6 +2575,11 @@ class Game {
 
         this.particles.forEach(p => p.draw(this.ctx));
 
+        // Tutorial Visual Overlay - Visual hints for new players
+        if (gameSettings.tutorialEnabled && !gameSettings.tutorialCompleted && this.state === STATE.PLAYING) {
+            this.drawTutorialOverlay();
+        }
+
         // Mineral Scanner - Highlight diamonds and enemies
         if (this.gameMode === GAME_MODES.ROGUE && this.revealMapTimer > 0) {
             this.revealMapTimer -= 16; // Approx decrement per frame (60fps)
@@ -2983,6 +2990,162 @@ class Game {
             this.ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
             this.ctx.shadowBlur = 0;
         }
+    }
+
+    // Tutorial Visual Overlay System
+    drawTutorialOverlay() {
+        const time = Date.now();
+        const pulsePhase = Math.sin(time * 0.005) * 0.5 + 0.5; // 0-1 pulsing
+        const arrowBounce = Math.sin(time * 0.008) * 5;
+
+        this.ctx.save();
+
+        // 1. Pulsing Glow on Diamonds (first 5 uncollected)
+        let diamondCount = 0;
+        for (let y = 0; y < GRID_HEIGHT && diamondCount < 5; y++) {
+            for (let x = 0; x < GRID_WIDTH && diamondCount < 5; x++) {
+                if (this.grid[y][x] === TYPES.DIAMOND) {
+                    diamondCount++;
+                    const cx = x * TILE_SIZE + TILE_SIZE / 2;
+                    const cy = y * TILE_SIZE + TILE_SIZE / 2;
+
+                    // Outer glow ring
+                    this.ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + pulsePhase * 0.5})`;
+                    this.ctx.lineWidth = 2 + pulsePhase * 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx, cy, TILE_SIZE / 2 + 4 + pulsePhase * 4, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+            }
+        }
+
+        // 2. Exit Highlight (when enough diamonds collected)
+        if (this.diamondsCollected >= this.diamondsNeeded) {
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (this.grid[y][x] === TYPES.EXIT) {
+                        const cx = x * TILE_SIZE + TILE_SIZE / 2;
+                        const cy = y * TILE_SIZE + TILE_SIZE / 2;
+
+                        // Strong green glow
+                        this.ctx.strokeStyle = `rgba(0, 255, 100, ${0.5 + pulsePhase * 0.5})`;
+                        this.ctx.lineWidth = 3 + pulsePhase * 3;
+                        this.ctx.beginPath();
+                        this.ctx.arc(cx, cy, TILE_SIZE / 2 + 6 + pulsePhase * 6, 0, Math.PI * 2);
+                        this.ctx.stroke();
+
+                        // Arrow pointing to exit
+                        this.drawTutorialArrow(this.player.x, this.player.y, x, y, '#00ff64', arrowBounce);
+                    }
+                }
+            }
+        } else {
+            // Arrow pointing to nearest diamond
+            let nearestDiamond = null;
+            let nearestDist = Infinity;
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (this.grid[y][x] === TYPES.DIAMOND) {
+                        const dist = Math.abs(x - this.player.x) + Math.abs(y - this.player.y);
+                        if (dist < nearestDist) {
+                            nearestDist = dist;
+                            nearestDiamond = { x, y };
+                        }
+                    }
+                }
+            }
+            if (nearestDiamond && nearestDist > 2) {
+                this.drawTutorialArrow(this.player.x, this.player.y, nearestDiamond.x, nearestDiamond.y, '#00ffff', arrowBounce);
+            }
+        }
+
+        // 3. Danger Zone Warning - Red overlay under falling rocks
+        for (let y = 0; y < GRID_HEIGHT - 1; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (this.grid[y][x] === TYPES.ROCK || this.grid[y][x] === TYPES.DIAMOND) {
+                    // Check if this rock could fall (empty below)
+                    if (this.grid[y + 1][x] === TYPES.EMPTY || this.grid[y + 1][x] === TYPES.PLAYER) {
+                        // Draw danger zone where rock would land
+                        let fallY = y + 1;
+                        while (fallY < GRID_HEIGHT && this.grid[fallY][x] === TYPES.EMPTY) {
+                            fallY++;
+                        }
+                        // Highlight danger zone
+                        for (let dangerY = y + 1; dangerY < fallY; dangerY++) {
+                            const dx = x * TILE_SIZE;
+                            const dy = dangerY * TILE_SIZE;
+                            this.ctx.fillStyle = `rgba(255, 0, 0, ${0.15 + pulsePhase * 0.1})`;
+                            this.ctx.fillRect(dx, dy, TILE_SIZE, TILE_SIZE);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Enemy Warning - Red pulse around nearby enemies
+        this.enemies.forEach(enemy => {
+            const dist = Math.abs(enemy.x - this.player.x) + Math.abs(enemy.y - this.player.y);
+            if (dist <= 5) {
+                const cx = enemy.x * TILE_SIZE + TILE_SIZE / 2;
+                const cy = enemy.y * TILE_SIZE + TILE_SIZE / 2;
+                this.ctx.strokeStyle = `rgba(255, 50, 50, ${0.4 + pulsePhase * 0.4})`;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(cx, cy, TILE_SIZE / 2 + 8 + pulsePhase * 4, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+        });
+
+        // 5. TNT Pickup Highlight
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (this.grid[y][x] === TYPES.DYNAMITE_PICKUP) {
+                    const cx = x * TILE_SIZE + TILE_SIZE / 2;
+                    const cy = y * TILE_SIZE + TILE_SIZE / 2;
+
+                    // Orange pulsing glow
+                    this.ctx.strokeStyle = `rgba(255, 100, 0, ${0.3 + pulsePhase * 0.5})`;
+                    this.ctx.lineWidth = 2 + pulsePhase * 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx, cy, TILE_SIZE / 2 + 4 + pulsePhase * 4, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+            }
+        }
+
+        this.ctx.restore();
+    }
+
+    // Draw directional arrow from player toward target
+    drawTutorialArrow(fromX, fromY, toX, toY, color, bounce) {
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        if (dx === 0 && dy === 0) return;
+
+        // Normalize direction
+        const angle = Math.atan2(dy, dx);
+
+        // Arrow position (near player)
+        const arrowDist = TILE_SIZE * 1.5;
+        const ax = fromX * TILE_SIZE + TILE_SIZE / 2 + Math.cos(angle) * arrowDist;
+        const ay = fromY * TILE_SIZE + TILE_SIZE / 2 + Math.sin(angle) * arrowDist + bounce;
+
+        this.ctx.save();
+        this.ctx.translate(ax, ay);
+        this.ctx.rotate(angle);
+
+        // Draw arrow
+        this.ctx.fillStyle = color;
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = color;
+        this.ctx.beginPath();
+        this.ctx.moveTo(10, 0);
+        this.ctx.lineTo(-6, -8);
+        this.ctx.lineTo(-6, 8);
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        this.ctx.restore();
     }
 
 
@@ -5285,6 +5448,7 @@ function initSettingsModal() {
 
     const colorblindSelect = document.getElementById('colorblind-mode');
     const languageSelect = document.getElementById('language-select');
+    const tutorialSelect = document.getElementById('tutorial-mode');
 
     // Load current values
     function loadSettings() {
@@ -5296,6 +5460,7 @@ function initSettingsModal() {
         updateVolumeDisplays();
 
         colorblindSelect.value = gameSettings.colorblindMode;
+        tutorialSelect.value = gameSettings.tutorialEnabled ? 'on' : 'off';
 
         // Set current language
         if (typeof getCurrentLanguage === 'function') {
@@ -5365,6 +5530,18 @@ function initSettingsModal() {
         gameSettings.colorblindMode = colorblindSelect.value;
         localStorage.setItem('colorblindMode', colorblindSelect.value);
         // Note: Theme will apply on next level load
+    });
+
+    // Tutorial mode toggle
+    tutorialSelect.addEventListener('change', () => {
+        const enabled = tutorialSelect.value === 'on';
+        gameSettings.tutorialEnabled = enabled;
+        localStorage.setItem('tutorialEnabled', enabled ? 'true' : 'false');
+        // Reset tutorial completed status when turning tutorial back on
+        if (enabled) {
+            gameSettings.tutorialCompleted = false;
+            localStorage.setItem('tutorialCompleted', 'false');
+        }
     });
 
     // Language selection
