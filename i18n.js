@@ -16,8 +16,13 @@ const I18N = {
             "menu.rogue": "ROGUE MINER",
             "menu.loadLevel": "LOAD LEVEL",
             "menu.editor": "LEVEL EDITOR",
+            "menu.achievements": "ACHIEVEMENTS",
             "menu.help": "HELP",
             "menu.hint": "Select a Game Mode to Start",
+            // Achievements Modal
+            "achievements.title": "🏆 ACHIEVEMENTS",
+            "achievements.close": "BACK",
+            "achievements.progress": "{unlocked}/{total} Unlocked",
             // HUD
             "hud.score": "SCORE",
             "hud.diamonds": "DIAMONDS",
@@ -290,9 +295,14 @@ const I18N = {
             "menu.hardcore": "HARDCORE",
             "menu.rogue": "ROGUE BÁNYÁSZ",
             "menu.loadLevel": "PÁLYA BETÖLTÉSE",
-            "menu.editor": "PÁLYASZERKESZTŐ",
+            "menu.editor": "SZERKESZTŐ",
+            "menu.achievements": "EREDMÉNYEK",
             "menu.help": "SÚGÓ",
             "menu.hint": "Válassz játékmódot",
+            // Achievements Modal
+            "achievements.title": "🏆 EREDMÉNYEK",
+            "achievements.close": "VISSZA",
+            "achievements.progress": "{unlocked}/{total} Feloldva",
             "hud.score": "PONT",
             "hud.diamonds": "GYÉMÁNT",
             "hud.tnt": "TNT",
@@ -2183,17 +2193,92 @@ const I18N = {
         return data[fieldName] || null;
     },
 
+    // Generate Achievements list content
+    generateAchievementsContent() {
+        const listContainer = document.querySelector('.achievements-list');
+        const progressEl = document.getElementById('achievements-progress');
+        if (!listContainer) return;
+
+        // Get ACHIEVEMENTS array from game.js (it should be globally available)
+        const achievements = window.ACHIEVEMENTS || [];
+        const unlocked = window.unlockedAchievements || [];
+
+        // Update progress
+        if (progressEl) {
+            progressEl.textContent = this.t('achievements.progress', {
+                unlocked: unlocked.length,
+                total: achievements.length
+            });
+        }
+
+        // Generate achievement items
+        listContainer.innerHTML = achievements.map(ach => {
+            const isUnlocked = unlocked.includes(ach.id);
+            const statusClass = isUnlocked ? 'unlocked' : 'locked';
+            return `
+                <div class="achievement-item ${statusClass}" role="listitem">
+                    <span class="achievement-icon">${ach.icon}</span>
+                    <div class="achievement-info">
+                        <span class="achievement-name">${this.t(`achievement.${ach.id}.name`)}</span>
+                        <span class="achievement-desc">${this.t(`achievement.${ach.id}.desc`)}</span>
+                    </div>
+                    <span class="achievement-status"></span>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // Setup achievements modal event handlers
+    setupAchievementsModal() {
+        const btnOpen = document.getElementById('btn-achievements');
+        const btnClose = document.getElementById('btn-achievements-close');
+        const modal = document.getElementById('achievements-modal');
+
+        if (btnOpen) {
+            btnOpen.addEventListener('click', () => {
+                this.generateAchievementsContent();
+                modal.classList.remove('hidden');
+            });
+        }
+
+        if (btnClose) {
+            btnClose.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+        }
+    },
+
     // Initialize
     init() {
         this.detectLanguage();
         this.translatePage();
         this.generateHelpContent();
+        this.setupAchievementsModal();
     }
 };
 
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => I18N.init());
 
+// Set language manually (used by settings)
+function setLanguage(lang) {
+    if (lang === 'auto') {
+        I18N.detectLanguage();
+    } else {
+        I18N.currentLang = lang;
+    }
+    I18N.translatePage();
+    I18N.generateHelpContent();
+    console.log(`[i18n] Language set to: ${I18N.currentLang}`);
+}
+
+// Get current language
+function getCurrentLanguage() {
+    return I18N.currentLang;
+}
+
 // Export for global use
 window.I18N = I18N;
 window.t = (key, params) => I18N.t(key, params);
+window.setLanguage = setLanguage;
+window.getCurrentLanguage = getCurrentLanguage;
