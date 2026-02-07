@@ -328,6 +328,10 @@ const playerStats = {
 // Unlocked achievements (persisted to localStorage)
 const unlockedAchievements = JSON.parse(localStorage.getItem('unlockedAchievements')) || [];
 
+// Export achievements to window for i18n.js modal
+window.ACHIEVEMENTS = ACHIEVEMENTS;
+window.unlockedAchievements = unlockedAchievements;
+
 // Achievement unlock function
 function unlockAchievement(id) {
     if (unlockedAchievements.includes(id)) return false;
@@ -2512,6 +2516,12 @@ class Game {
         }
 
         this.timeLeft -= dt / 1000;
+
+        // Low time warning haptic at 10 seconds
+        if (this.timeLeft <= 10 && this.timeLeft > 0 && Math.floor(this.timeLeft) !== Math.floor(this.timeLeft + dt / 1000)) {
+            this.vibrate(100, 0.4, 0.5); // Pulse warning for low time
+        }
+
         if (this.timeLeft <= 0) {
             this.timeLeft = 0;
             this.die();
@@ -4826,10 +4836,12 @@ class Game {
         if (this.diamondsCollected === this.diamondsNeeded) {
             this.flashTimer = 150; // 150ms white flash
             this.sound.playTone(1200, 'square', 0.2, 0.2); // High pitch alert
+            this.vibrate(200, 0.6, 0.8); // Strong haptic feedback for exit opening
         }
 
         this.spawnParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, '#00ffff', 10);
         this.sound.playCollect();
+        this.vibrate(50, 0.3, 0.4); // Haptic feedback for diamond collection
         this.updateUI();
     }
 
@@ -4968,6 +4980,7 @@ class Game {
                     this.grid[cell.y][cell.x] = TYPES.DIAMOND;
                 });
                 this.sound.playWin();
+                this.vibrate(250, 0.7, 0.9); // Strong haptic for amoeba diamond transformation
             } else {
                 // Grow Randomly
                 const growthAttempts = Math.max(1, Math.floor(amoebaCells.length / 20)) + 1;
