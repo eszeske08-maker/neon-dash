@@ -733,20 +733,31 @@ class Enemy {
     }
 
     moveBasic(game) {
-        // Boulder Dash wall-following behavior (left-hand rule for CLOCKWISE motion):
-        // The enemy keeps a wall on its LEFT side and follows it.
+        this.moveWallFollow(game, 'left');
+    }
+
+    moveWallFollow(game, followSide) {
+        // Parametric wall-following behavior:
+        // followSide='left'  → left-hand rule, CLOCKWISE motion (BASIC enemy)
+        // followSide='right' → right-hand rule, COUNTER-CLOCKWISE motion (BUTTERFLY enemy)
+        const getFollowDir = followSide === 'left'
+            ? () => this.getLeftDirection()
+            : () => this.getRightDirection();
+        const getOppositeDir = followSide === 'left'
+            ? () => this.getRightDirection()
+            : () => this.getLeftDirection();
 
         // If in searching mode (no wall found yet), go straight until we find one
         if (this.searchingForWall) {
             const straightX = this.x + this.dirX;
             const straightY = this.y + this.dirY;
 
-            // Check if there's now a wall on our left side
-            const leftDir = this.getLeftDirection();
-            const leftX = this.x + leftDir.x;
-            const leftY = this.y + leftDir.y;
-            if (!this.isValidMove(leftX, leftY, game)) {
-                // Found a wall on the left! Switch to normal wall-following
+            // Check if there's now a wall on our follow side
+            const followDir = getFollowDir();
+            const followX = this.x + followDir.x;
+            const followY = this.y + followDir.y;
+            if (!this.isValidMove(followX, followY, game)) {
+                // Found a wall on the follow side! Switch to normal wall-following
                 this.searchingForWall = false;
             }
 
@@ -754,10 +765,10 @@ class Enemy {
                 this.performMove(straightX, straightY, game);
                 return;
             } else {
-                // Hit something - turn right (clockwise) and continue searching
-                const rightDir = this.getRightDirection();
-                this.dirX = rightDir.x;
-                this.dirY = rightDir.y;
+                // Hit something - turn opposite and continue searching
+                const oppDir = getOppositeDir();
+                this.dirX = oppDir.x;
+                this.dirY = oppDir.y;
                 const newX = this.x + this.dirX;
                 const newY = this.y + this.dirY;
                 if (this.isValidMove(newX, newY, game)) {
@@ -768,25 +779,25 @@ class Enemy {
         }
 
         // Normal wall-following mode:
-        // 1. If LEFT is now FREE (wall ended) -> turn left and move (to keep following the wall)
-        // 2. If LEFT is blocked, try to go STRAIGHT
-        // 3. If STRAIGHT blocked, try RIGHT
-        // 4. If RIGHT blocked, REVERSE
+        // 1. If FOLLOW SIDE is now FREE (wall ended) -> turn that way and move (to keep following the wall)
+        // 2. If FOLLOW SIDE is blocked, try to go STRAIGHT
+        // 3. If STRAIGHT blocked, try OPPOSITE SIDE
+        // 4. If OPPOSITE SIDE blocked, REVERSE
 
-        // Get left direction (counter-clockwise from current direction)
-        const leftDir = this.getLeftDirection();
-        const leftX = this.x + leftDir.x;
-        const leftY = this.y + leftDir.y;
+        // Get follow-side direction
+        const followDir = getFollowDir();
+        const followX = this.x + followDir.x;
+        const followY = this.y + followDir.y;
 
-        // Check if left side is free (wall ended, we should turn left to follow it)
-        if (this.isValidMove(leftX, leftY, game)) {
-            this.dirX = leftDir.x;
-            this.dirY = leftDir.y;
-            this.performMove(leftX, leftY, game);
+        // Check if follow side is free (wall ended, we should turn to follow it)
+        if (this.isValidMove(followX, followY, game)) {
+            this.dirX = followDir.x;
+            this.dirY = followDir.y;
+            this.performMove(followX, followY, game);
             return;
         }
 
-        // Left is blocked (wall is there), try straight
+        // Follow side is blocked (wall is there), try straight
         const straightX = this.x + this.dirX;
         const straightY = this.y + this.dirY;
         if (this.isValidMove(straightX, straightY, game)) {
@@ -794,14 +805,14 @@ class Enemy {
             return;
         }
 
-        // Straight blocked, try right (clockwise)
-        const rightDir = this.getRightDirection();
-        const rightX = this.x + rightDir.x;
-        const rightY = this.y + rightDir.y;
-        if (this.isValidMove(rightX, rightY, game)) {
-            this.dirX = rightDir.x;
-            this.dirY = rightDir.y;
-            this.performMove(rightX, rightY, game);
+        // Straight blocked, try opposite side
+        const oppDir = getOppositeDir();
+        const oppX = this.x + oppDir.x;
+        const oppY = this.y + oppDir.y;
+        if (this.isValidMove(oppX, oppY, game)) {
+            this.dirX = oppDir.x;
+            this.dirY = oppDir.y;
+            this.performMove(oppX, oppY, game);
             return;
         }
 
@@ -835,87 +846,7 @@ class Enemy {
     }
 
     moveButterfly(game) {
-        // Boulder Dash wall-following behavior (right-hand rule for COUNTER-CLOCKWISE motion):
-        // The enemy keeps a wall on its RIGHT side and follows it.
-
-        // If in searching mode (no wall found yet), go straight until we find one
-        if (this.searchingForWall) {
-            const straightX = this.x + this.dirX;
-            const straightY = this.y + this.dirY;
-
-            // Check if there's now a wall on our right side
-            const rightDir = this.getRightDirection();
-            const rightX = this.x + rightDir.x;
-            const rightY = this.y + rightDir.y;
-            if (!this.isValidMove(rightX, rightY, game)) {
-                // Found a wall on the right! Switch to normal wall-following
-                this.searchingForWall = false;
-            }
-
-            if (this.isValidMove(straightX, straightY, game)) {
-                this.performMove(straightX, straightY, game);
-                return;
-            } else {
-                // Hit something - turn left (counter-clockwise) and continue searching
-                const leftDir = this.getLeftDirection();
-                this.dirX = leftDir.x;
-                this.dirY = leftDir.y;
-                const newX = this.x + this.dirX;
-                const newY = this.y + this.dirY;
-                if (this.isValidMove(newX, newY, game)) {
-                    this.performMove(newX, newY, game);
-                }
-                return;
-            }
-        }
-
-        // Normal wall-following mode:
-        // 1. If RIGHT is now FREE (wall ended) -> turn right and move (to keep following the wall)
-        // 2. If RIGHT is blocked, try to go STRAIGHT
-        // 3. If STRAIGHT blocked, try LEFT
-        // 4. If LEFT blocked, REVERSE
-
-        // Get right direction (clockwise from current direction)
-        const rightDir = this.getRightDirection();
-        const rightX = this.x + rightDir.x;
-        const rightY = this.y + rightDir.y;
-
-        // Check if right side is free (wall ended, we should turn right to follow it)
-        if (this.isValidMove(rightX, rightY, game)) {
-            this.dirX = rightDir.x;
-            this.dirY = rightDir.y;
-            this.performMove(rightX, rightY, game);
-            return;
-        }
-
-        // Right is blocked (wall is there), try straight
-        const straightX = this.x + this.dirX;
-        const straightY = this.y + this.dirY;
-        if (this.isValidMove(straightX, straightY, game)) {
-            this.performMove(straightX, straightY, game);
-            return;
-        }
-
-        // Straight blocked, try left (counter-clockwise)
-        const leftDir = this.getLeftDirection();
-        const leftX = this.x + leftDir.x;
-        const leftY = this.y + leftDir.y;
-        if (this.isValidMove(leftX, leftY, game)) {
-            this.dirX = leftDir.x;
-            this.dirY = leftDir.y;
-            this.performMove(leftX, leftY, game);
-            return;
-        }
-
-        // All directions blocked, reverse (180 degrees)
-        this.dirX = -this.dirX;
-        this.dirY = -this.dirY;
-        const reverseX = this.x + this.dirX;
-        const reverseY = this.y + this.dirY;
-        if (this.isValidMove(reverseX, reverseY, game)) {
-            this.performMove(reverseX, reverseY, game);
-        }
-        // If all directions blocked, stay in place
+        this.moveWallFollow(game, 'right');
     }
 
     moveSeeker(game) {
@@ -1372,7 +1303,7 @@ class Game {
         this.demoTimer = 0;
         this.demoInputTimer = 0;
         this.demoDuration = 30000; // 30 seconds
-        this.idleThreshold = 10000; // 10 seconds wait time
+        this.idleThreshold = 5000; // 5 seconds wait time (for testing)
 
         // Magic Wall Properties
         this.magicWallActive = false;
@@ -4212,32 +4143,109 @@ class Game {
             return;
         }
 
+        // Dynamic movement speed based on situation
+        let moveInterval = 300; // Default
+        const nearEnemy = this.enemies.some(e =>
+            Math.abs(e.x - this.player.x) + Math.abs(e.y - this.player.y) <= 4
+        );
+        const nearDiamond = this.grid[this.player.y] &&
+            (this.grid[this.player.y][this.player.x - 1] === TYPES.DIAMOND ||
+                this.grid[this.player.y][this.player.x + 1] === TYPES.DIAMOND ||
+                (this.grid[this.player.y - 1] && this.grid[this.player.y - 1][this.player.x] === TYPES.DIAMOND) ||
+                (this.grid[this.player.y + 1] && this.grid[this.player.y + 1][this.player.x] === TYPES.DIAMOND));
+
+        if (nearEnemy) {
+            moveInterval = 200; // Faster when in danger - need to react quickly
+        } else if (nearDiamond) {
+            moveInterval = 250; // Slightly faster when collecting
+        } else {
+            // Check if in open area
+            let openTiles = 0;
+            for (const dir of [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }]) {
+                const nx = this.player.x + dir.x;
+                const ny = this.player.y + dir.y;
+                if (this.isDemoMoveSafe(nx, ny)) openTiles++;
+            }
+            if (openTiles >= 3) moveInterval = 200; // Fast in open areas
+        }
+
         this.demoInputTimer += dt;
-        if (this.demoInputTimer > 300) { // Move every 300ms
+        if (this.demoInputTimer > moveInterval) {
             this.demoInputTimer = 0;
+
 
             // Track position history
             const currentPos = `${this.player.x},${this.player.y}`;
             this.demoPositionHistory.push(currentPos);
-            if (this.demoPositionHistory.length > 10) {
+            if (this.demoPositionHistory.length > 15) {
                 this.demoPositionHistory.shift();
             }
 
-            // Detect oscillation: if same position appears 3+ times in last 10 moves
+            // Detect oscillation: if same position appears 3+ times in last 15 moves
             const posCount = this.demoPositionHistory.filter(p => p === currentPos).length;
             const isOscillating = posCount >= 3;
 
-            // If oscillating, use random move to break out
+            // Detect oscillation direction by analyzing recent moves
+            let isVerticalOscillation = false;
+            let isHorizontalOscillation = false;
+            if (this.demoPositionHistory.length >= 4) {
+                const recent = this.demoPositionHistory.slice(-4);
+                const positions = recent.map(p => {
+                    const [x, y] = p.split(',').map(Number);
+                    return { x, y };
+                });
+
+                // Check if X stays same but Y changes (vertical oscillation)
+                const sameX = positions.every(p => p.x === positions[0].x);
+                const differentY = new Set(positions.map(p => p.y)).size > 1;
+                isVerticalOscillation = sameX && differentY;
+
+                // Check if Y stays same but X changes (horizontal oscillation)
+                const sameY = positions.every(p => p.y === positions[0].y);
+                const differentX = new Set(positions.map(p => p.x)).size > 1;
+                isHorizontalOscillation = sameY && differentX;
+            }
+
+            // If oscillating, prefer perpendicular movement to break out
             if (isOscillating) {
-                const dirs = [
+                const allDirs = [
                     { x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }
                 ];
+
+                // Prioritize perpendicular directions based on oscillation type
+                let preferredDirs = [];
+                let fallbackDirs = [];
+
+                if (isVerticalOscillation) {
+                    // Vertical oscillation -> prefer horizontal movement
+                    preferredDirs = [{ x: -1, y: 0 }, { x: 1, y: 0 }];
+                    fallbackDirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }];
+                } else if (isHorizontalOscillation) {
+                    // Horizontal oscillation -> prefer vertical movement
+                    preferredDirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }];
+                    fallbackDirs = [{ x: -1, y: 0 }, { x: 1, y: 0 }];
+                } else {
+                    // Unknown oscillation -> try all directions
+                    preferredDirs = allDirs;
+                }
+
+                // Try preferred directions first
                 let validMoves = [];
-                for (let dir of dirs) {
+                for (let dir of preferredDirs) {
                     if (this.isDemoMoveSafe(this.player.x + dir.x, this.player.y + dir.y)) {
                         validMoves.push(dir);
                     }
                 }
+
+                // If no preferred moves, try fallback
+                if (validMoves.length === 0) {
+                    for (let dir of fallbackDirs) {
+                        if (this.isDemoMoveSafe(this.player.x + dir.x, this.player.y + dir.y)) {
+                            validMoves.push(dir);
+                        }
+                    }
+                }
+
                 if (validMoves.length > 0) {
                     const move = validMoves[Math.floor(Math.random() * validMoves.length)];
                     this.player.nextDirX = move.x;
@@ -4247,6 +4255,7 @@ class Game {
                     return;
                 }
             }
+
 
             const dirs = [
                 { x: 0, y: -1 }, // Up
@@ -4260,20 +4269,43 @@ class Game {
                 // Check if surrounded by rocks or stuck
                 let rocksNearby = 0;
                 let blockedDirs = 0;
+                let diamondsBehindRocks = 0;
+
                 for (const dir of dirs) {
                     const nx = this.player.x + dir.x;
                     const ny = this.player.y + dir.y;
                     if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
                         const tile = this.grid[ny][nx];
-                        if (tile === TYPES.ROCK) rocksNearby++;
+                        if (tile === TYPES.ROCK) {
+                            rocksNearby++;
+                            // Check if diamond behind this rock
+                            const bx = nx + dir.x;
+                            const by = ny + dir.y;
+                            if (bx >= 0 && bx < GRID_WIDTH && by >= 0 && by < GRID_HEIGHT) {
+                                if (this.grid[by][bx] === TYPES.DIAMOND) diamondsBehindRocks++;
+                            }
+                        }
                         if (tile === TYPES.WALL || tile === TYPES.ROCK || tile === TYPES.STEEL) {
                             blockedDirs++;
                         }
                     }
                 }
 
-                // Place dynamite if mostly blocked or oscillating with rocks nearby
-                if ((blockedDirs >= 3 || (isOscillating && rocksNearby >= 1)) && Math.random() < 0.5) {
+                // Conditions to use TNT:
+                // 1. Mostly blocked (3+ dirs) and oscillating
+                // 2. Enemy very close (2 tiles) - defensive use
+                // 3. Multiple diamonds behind rocks
+                const enemyVeryClose = this.enemies.some(e =>
+                    Math.abs(e.x - this.player.x) + Math.abs(e.y - this.player.y) <= 2
+                );
+
+                const shouldUseTNT = (
+                    (blockedDirs >= 3 && isOscillating) ||
+                    (enemyVeryClose && this.dynamiteCount > 1) ||
+                    (diamondsBehindRocks >= 2 && blockedDirs >= 2)
+                ) && Math.random() < 0.6;
+
+                if (shouldUseTNT) {
                     this.placeDynamite();
                     // Move away from bomb!
                     let validMoves = [];
@@ -4291,6 +4323,7 @@ class Game {
                     return;
                 }
             }
+
 
             // Check for nearby enemies - if too close, flee!
             let nearestEnemy = null;
@@ -4328,7 +4361,35 @@ class Game {
                 }
             }
 
+            // Try to hunt BUTTERFLY enemies (they create 9 diamonds when killed!)
+            const butterfly = this.findButterflyToHunt();
+            if (butterfly && this.diamondsCollected < this.diamondsNeeded) {
+                // Try to position above the butterfly to trigger rock drop
+                const rockAboveButterfly = this.grid[butterfly.y - 1] &&
+                    this.grid[butterfly.y - 1][butterfly.x] === TYPES.ROCK;
+
+                if (rockAboveButterfly) {
+                    // Try to dig under the rock to make it fall on butterfly
+                    const digTarget = { x: butterfly.x, y: butterfly.y - 2 };
+                    if (digTarget.y > 0 && this.grid[digTarget.y][digTarget.x] === TYPES.DIRT) {
+                        const pathToDig = this.findPathToNearest(TYPES.DIRT);
+                        if (pathToDig && pathToDig.length > 0) {
+                            // Check if this path leads toward the dig target
+                            const first = pathToDig[0];
+                            const distToDig = Math.abs(first.x - digTarget.x) + Math.abs(first.y - digTarget.y);
+                            if (distToDig < Math.abs(this.player.x - digTarget.x) + Math.abs(this.player.y - digTarget.y)) {
+                                this.player.nextDirX = first.x - this.player.x;
+                                this.player.nextDirY = first.y - this.player.y;
+                                this.demoLastDir = { x: this.player.nextDirX, y: this.player.nextDirY };
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
             // Find nearest diamond using BFS
+
             const path = this.findPathToNearest(TYPES.DIAMOND);
 
             if (path && path.length > 0) {
@@ -4405,7 +4466,146 @@ class Game {
         for (const enemy of this.enemies) {
             if (enemy.x === x && enemy.y === y) return false;
         }
+        // Check for falling rock danger
+        if (this.isTileDangerous(x, y)) return false;
+        // Check if enemy will move here next
+        if (this.willEnemyMoveHere(x, y)) return false;
         return true;
+    }
+
+    // Check if a tile has falling rock danger
+    isTileDangerous(x, y) {
+        if (y <= 0) return false;
+
+        // Check directly above for falling/unstable rock
+        const above = this.grid[y - 1][x];
+        if (above === TYPES.ROCK || above === TYPES.DIAMOND) {
+            if (this.fallingEntities.has(`${x},${y - 1}`)) return true;
+            // Check two tiles above for chain reaction
+            if (y >= 2) {
+                const twoAbove = this.grid[y - 2][x];
+                if ((twoAbove === TYPES.ROCK || twoAbove === TYPES.DIAMOND) &&
+                    this.fallingEntities.has(`${x},${y - 2}`)) {
+                    return true;
+                }
+            }
+        }
+
+        // Check diagonal rocks that could roll onto us
+        for (const dx of [-1, 1]) {
+            const nx = x + dx;
+            if (nx >= 0 && nx < GRID_WIDTH && y >= 1) {
+                const diagRock = this.grid[y - 1][nx];
+                const belowDiag = this.grid[y][nx];
+                if ((diagRock === TYPES.ROCK || diagRock === TYPES.DIAMOND) &&
+                    (belowDiag === TYPES.ROCK || belowDiag === TYPES.WALL ||
+                        belowDiag === TYPES.DIAMOND || belowDiag === TYPES.STEEL)) {
+                    if (this.grid[y][x] === TYPES.EMPTY && this.grid[y - 1][x] === TYPES.EMPTY) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    // Predict if an enemy will move to a specific tile next turn
+    willEnemyMoveHere(x, y) {
+        for (const enemy of this.enemies) {
+            const predicted = this.predictEnemyNextPosition(enemy);
+            if (predicted && predicted.x === x && predicted.y === y) return true;
+        }
+        return false;
+    }
+
+    // Predict where an enemy will move next
+    predictEnemyNextPosition(enemy) {
+        if (enemy.type === ENEMY_TYPES.SEEKER) {
+            const dx = this.player.x - enemy.x;
+            const dy = this.player.y - enemy.y;
+            let tryX = 0, tryY = 0;
+            if (Math.abs(dx) > Math.abs(dy)) tryX = Math.sign(dx);
+            else tryY = Math.sign(dy);
+
+            if (enemy.isValidMove(enemy.x + tryX, enemy.y + tryY, this)) {
+                return { x: enemy.x + tryX, y: enemy.y + tryY };
+            }
+            if (tryX !== 0) { tryX = 0; tryY = Math.sign(dy); }
+            else { tryY = 0; tryX = Math.sign(dx); }
+            if (enemy.isValidMove(enemy.x + tryX, enemy.y + tryY, this)) {
+                return { x: enemy.x + tryX, y: enemy.y + tryY };
+            }
+        } else if (enemy.type === ENEMY_TYPES.BUTTERFLY || enemy.type === ENEMY_TYPES.BASIC) {
+            // Wall-following: try right, straight, left
+            const rightDir = { x: -enemy.dirY, y: enemy.dirX };
+            if (enemy.isValidMove(enemy.x + rightDir.x, enemy.y + rightDir.y, this)) {
+                return { x: enemy.x + rightDir.x, y: enemy.y + rightDir.y };
+            }
+            if (enemy.isValidMove(enemy.x + enemy.dirX, enemy.y + enemy.dirY, this)) {
+                return { x: enemy.x + enemy.dirX, y: enemy.y + enemy.dirY };
+            }
+            const leftDir = { x: enemy.dirY, y: -enemy.dirX };
+            if (enemy.isValidMove(enemy.x + leftDir.x, enemy.y + leftDir.y, this)) {
+                return { x: enemy.x + leftDir.x, y: enemy.y + leftDir.y };
+            }
+        } else if (enemy.type === ENEMY_TYPES.PATROLLER) {
+            if (enemy.isValidMove(enemy.x + enemy.dirX, enemy.y + enemy.dirY, this)) {
+                return { x: enemy.x + enemy.dirX, y: enemy.y + enemy.dirY };
+            }
+        }
+        return null;
+    }
+
+    // Score a diamond target (higher = better)
+    scoreDiamondTarget(x, y) {
+        let score = 100;
+        const dist = Math.abs(x - this.player.x) + Math.abs(y - this.player.y);
+        score -= dist * 2;
+
+        for (const enemy of this.enemies) {
+            const enemyDist = Math.abs(x - enemy.x) + Math.abs(y - enemy.y);
+            if (enemyDist <= 2) score -= 50;
+            else if (enemyDist <= 4) score -= 20;
+        }
+
+        if (this.isTileDangerous(x, y)) score -= 40;
+        return score;
+    }
+
+    // Find the best diamond (considers safety)
+    findBestDiamond() {
+        let bestDiamond = null;
+        let bestScore = -Infinity;
+
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (this.grid[y][x] === TYPES.DIAMOND) {
+                    const score = this.scoreDiamondTarget(x, y);
+                    if (score > bestScore) {
+                        const path = this.findPathToNearest(TYPES.DIAMOND);
+                        if (path && path.length > 0) {
+                            bestScore = score;
+                            bestDiamond = { x, y, score };
+                        }
+                    }
+                }
+            }
+        }
+        return bestDiamond;
+    }
+
+    // Find BUTTERFLY to hunt (they create diamonds when killed)
+    findButterflyToHunt() {
+        for (const enemy of this.enemies) {
+            if (enemy.type === ENEMY_TYPES.BUTTERFLY) {
+                const dist = Math.abs(enemy.x - this.player.x) + Math.abs(enemy.y - this.player.y);
+                // Check if there's a rock above we could drop
+                if (dist > 3 && enemy.y > 0 && this.grid[enemy.y - 1][enemy.x] === TYPES.ROCK) {
+                    return enemy;
+                }
+            }
+        }
+        return null;
     }
 
     findPathToNearest(targetType) {
