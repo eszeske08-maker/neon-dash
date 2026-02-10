@@ -5296,98 +5296,9 @@ class Game {
                             this.fallingEntityFrames.set(`${x},${y}`, fallingFrames + 1);
                         }
                     } else if (this.fallingEntities.has(`${x},${y}`) && this.grid[y + 1][x] === TYPES.ENEMY) {
-                        // Crush enemy
-                        const enemyIndex = this.enemies.findIndex(e => e.x === x && e.y === y + 1);
-                        if (enemyIndex !== -1) {
-                            const enemy = this.enemies[enemyIndex];
-                            const enemyX = x;
-                            const enemyY = y + 1;
-
-                            this.enemies.splice(enemyIndex, 1);
-                            this.score += 50;
-                            this.spawnParticles(enemyX * TILE_SIZE + TILE_SIZE / 2, enemyY * TILE_SIZE + TILE_SIZE / 2, '#ff0000', 20);
-
-                            this.grid[y][x] = TYPES.EMPTY; // Rock is gone
-                            this.grid[enemyY][enemyX] = TYPES.EMPTY; // Enemy is gone
-
-                            // Different effects based on enemy type
-                            if (enemy.type === ENEMY_TYPES.BUTTERFLY) {
-                                // BUTTERFLY: Spawn 3x3 diamonds - convert ALL destructible tiles
-                                for (let dy = -1; dy <= 1; dy++) {
-                                    for (let dx = -1; dx <= 1; dx++) {
-                                        const nx = enemyX + dx;
-                                        const ny = enemyY + dy;
-
-                                        // Skip border walls
-                                        if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
-                                            const tile = this.grid[ny][nx];
-
-                                            // Kill player if in explosion radius
-                                            if (this.player.x === nx && this.player.y === ny) {
-                                                this.die();
-                                            }
-
-                                            // Convert all destructible tiles to diamonds (except STEEL and EXIT)
-                                            if (tile !== TYPES.STEEL && tile !== TYPES.EXIT && tile !== TYPES.PLAYER) {
-                                                // Remove other enemies in the area
-                                                if (tile === TYPES.ENEMY) {
-                                                    const otherEnemyIndex = this.enemies.findIndex(e => e.x === nx && e.y === ny);
-                                                    if (otherEnemyIndex !== -1) {
-                                                        this.enemies.splice(otherEnemyIndex, 1);
-                                                    }
-                                                }
-                                                this.grid[ny][nx] = TYPES.DIAMOND;
-                                                this.spawnParticles(nx * TILE_SIZE + TILE_SIZE / 2, ny * TILE_SIZE + TILE_SIZE / 2, '#00ffff', 5);
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                // BASIC, SEEKER, PATROLLER: Explode 3x3 area (destroy tiles)
-                                for (let dy = -1; dy <= 1; dy++) {
-                                    for (let dx = -1; dx <= 1; dx++) {
-                                        const nx = enemyX + dx;
-                                        const ny = enemyY + dy;
-
-                                        // Skip border walls
-                                        if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
-                                            const tile = this.grid[ny][nx];
-
-                                            // Kill player if in explosion radius
-                                            if (this.player.x === nx && this.player.y === ny) {
-                                                this.die();
-                                            }
-
-                                            // Destroy most things (like dynamite explosion)
-                                            if (tile === TYPES.DIRT || tile === TYPES.ROCK || tile === TYPES.DIAMOND || tile === TYPES.WALL) {
-                                                this.grid[ny][nx] = TYPES.EMPTY;
-                                                this.spawnParticles(nx * TILE_SIZE + TILE_SIZE / 2, ny * TILE_SIZE + TILE_SIZE / 2, '#ff4400', 10);
-                                            }
-
-                                            // Kill other enemies in the area
-                                            if (tile === TYPES.ENEMY) {
-                                                const otherEnemyIndex = this.enemies.findIndex(e => e.x === nx && e.y === ny);
-                                                if (otherEnemyIndex !== -1) {
-                                                    this.enemies.splice(otherEnemyIndex, 1);
-                                                    this.grid[ny][nx] = TYPES.EMPTY;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Trigger Shake
-                            this.shakeTimer = 200;
-                            this.sound.playExplosion();
-
-                            // Haptic feedback for enemy kill
-                            if (enemy.type === ENEMY_TYPES.BASIC) {
-                                this.vibrate(150, 0.6, 0.8); // Stronger feedback for diamond creation
-                            } else {
-                                this.vibrate(100, 0.4, 0.6); // Standard feedback for regular explosion
-                            }
-                        }
+                        // Crush enemy - remove the falling rock/diamond first
+                        this.grid[y][x] = TYPES.EMPTY; // Rock/diamond is consumed
+                        this.killEnemyAt(x, y + 1, 'rock');
                     } else if (this.grid[y + 1][x] === TYPES.WALL || this.grid[y + 1][x] === TYPES.ROCK || this.grid[y + 1][x] === TYPES.DIAMOND || this.grid[y + 1][x] === TYPES.STEEL || this.grid[y + 1][x] === TYPES.MAGIC_WALL) {
                         // Roll off rounded objects
                         if (this.grid[y][x - 1] === TYPES.EMPTY && this.grid[y + 1][x - 1] === TYPES.EMPTY) {
@@ -5447,7 +5358,8 @@ class Game {
 
         this.grid[y][x] = TYPES.EMPTY;
 
-        if (enemy.type === ENEMY_TYPES.BASIC) {
+        if (enemy.type === ENEMY_TYPES.BUTTERFLY) {
+            // BUTTERFLY: Spawn diamonds - convert ALL destructible tiles
             // Sonic Boom perk: larger explosion radius (5x5)
             let explosionRadius = 1;
             if (this.gameMode === GAME_MODES.ROGUE && this.roguePerks.includes('sonicBoom')) {
@@ -5468,8 +5380,8 @@ class Game {
                             return; // Player died, stop processing this explosion
                         }
 
-                        // Convert all destructible tiles to diamonds (except STEEL and EXIT)
-                        if (tile !== TYPES.STEEL && tile !== TYPES.EXIT) {
+                        // Convert all destructible tiles to diamonds (except STEEL, EXIT, and PLAYER)
+                        if (tile !== TYPES.STEEL && tile !== TYPES.EXIT && tile !== TYPES.PLAYER) {
                             // Remove other enemies in the area
                             if (tile === TYPES.ENEMY) {
                                 const otherEnemyIndex = this.enemies.findIndex(e => e.x === nx && e.y === ny);
@@ -5484,6 +5396,7 @@ class Game {
                 }
             }
         } else {
+            // BASIC, SEEKER, PATROLLER: Explode 3x3 area (destroy tiles)
             for (let dy = -1; dy <= 1; dy++) {
                 for (let dx = -1; dx <= 1; dx++) {
                     const nx = x + dx;
@@ -5492,9 +5405,24 @@ class Game {
                     if (nx > 0 && nx < GRID_WIDTH - 1 && ny > 0 && ny < GRID_HEIGHT - 1) {
                         const tile = this.grid[ny][nx];
 
+                        // Kill player if in explosion radius
+                        if (this.player.x === nx && this.player.y === ny) {
+                            this.die();
+                        }
+
+                        // Destroy most things (like dynamite explosion)
                         if (tile === TYPES.DIRT || tile === TYPES.ROCK || tile === TYPES.DIAMOND || tile === TYPES.WALL) {
                             this.grid[ny][nx] = TYPES.EMPTY;
                             this.spawnParticles(nx * TILE_SIZE + TILE_SIZE / 2, ny * TILE_SIZE + TILE_SIZE / 2, '#ff4400', 10);
+                        }
+
+                        // Kill other enemies in the area
+                        if (tile === TYPES.ENEMY) {
+                            const otherEnemyIndex = this.enemies.findIndex(e => e.x === nx && e.y === ny);
+                            if (otherEnemyIndex !== -1) {
+                                this.enemies.splice(otherEnemyIndex, 1);
+                                this.grid[ny][nx] = TYPES.EMPTY;
+                            }
                         }
                     }
                 }
@@ -5505,7 +5433,7 @@ class Game {
         this.sound.playExplosion();
 
         // Haptic feedback for enemy kill
-        if (enemy.type === ENEMY_TYPES.BASIC) {
+        if (enemy.type === ENEMY_TYPES.BUTTERFLY) {
             this.vibrate(150, 0.6, 0.8); // Stronger feedback for diamond creation
         } else {
             this.vibrate(100, 0.4, 0.6); // Standard feedback for regular explosion
