@@ -12,6 +12,7 @@ class Game {
     constructor() {
         console.log('Game Constructor called');
         this.initCanvas();
+        this.initDOMCache();
         this.initState();
         this.initMenuState();
         this.initVisualEffects();
@@ -34,6 +35,23 @@ class Game {
         // Resize canvas to fit grid
         this.canvas.width = this.width;
         this.canvas.height = this.height;
+    }
+
+    // ── DOM Element Cache (avoid per-frame getElementById calls) ─────
+    initDOMCache() {
+        this.fpsCounterEl = document.getElementById('fps-counter');
+        this.scoreEl = document.getElementById('score');
+        this.diamondsEl = document.getElementById('diamonds');
+        this.timeEl = document.getElementById('time');
+        this.levelEl = document.getElementById('level');
+        this.dynamiteEl = document.getElementById('dynamite');
+        this.messageOverlayEl = document.getElementById('message-overlay');
+        this.messageTitleEl = document.getElementById('message-title');
+        this.messageSubtitleEl = document.getElementById('message-subtitle');
+        this.pauseOverlayEl = document.getElementById('pause-overlay');
+        this.menuScreenEl = document.getElementById('menu-screen');
+        this.editorOverlayEl = document.getElementById('editor-overlay');
+        this.loadLevelModalEl = document.getElementById('load-level-modal');
     }
 
     // ── Game State Variables ──────────────────────────────────────────
@@ -806,8 +824,8 @@ class Game {
                         this.grid[y + 1][x] = type;
 
                         // Mark as falling for physics system consistency
-                        this.fallingEntities.add(`${x},${y + 1}`);
-                        this.fallingEntityFrames.set(`${x},${y + 1}`, 1);
+                        this.fallingEntities.add(tileKey(x, y + 1));
+                        this.fallingEntityFrames.set(tileKey(x, y + 1), 1);
                     }
                 }
             }
@@ -830,9 +848,8 @@ class Game {
         this.fpsTime += dt;
         if (this.fpsTime >= 1000) {
             this.fps = Math.round(this.frameCount * 1000 / this.fpsTime);
-            const fpsCounter = document.getElementById('fps-counter');
-            if (fpsCounter) {
-                fpsCounter.innerText = `FPS: ${this.fps}`;
+            if (this.fpsCounterEl) {
+                this.fpsCounterEl.innerText = `FPS: ${this.fps}`;
             }
             this.frameCount = 0;
             this.fpsTime = 0;
@@ -924,9 +941,9 @@ class Game {
                     if (selectedBtnId === 'btn-fullscreen') {
                         this.toggleFullscreen();
                     } else {
-                        const selectedBtn = document.getElementById(selectedBtnId);
-                        if (selectedBtn) {
-                            selectedBtn.click();
+                        const selectedBtnEl = document.getElementById(selectedBtnId);
+                        if (selectedBtnEl) {
+                            selectedBtnEl.click();
                         }
                     }
                 }
@@ -934,7 +951,7 @@ class Game {
                 else if (gp.buttons[1].pressed && !this.gamepadActionLocked) {
                     this.gamepadActionLocked = true;
                     this.state = this.prevState || STATE.PLAYING;
-                    document.getElementById('pause-overlay').classList.add('hidden');
+                    this.pauseOverlayEl.classList.add('hidden');
                 }
                 // Reset lock when no buttons pressed
                 else if (!gp.buttons[0].pressed && !gp.buttons[1].pressed) {
@@ -973,7 +990,7 @@ class Game {
                     this.gamepadActionLocked = true;
                     this.sound.playMenuBlip();
                     this.state = STATE.MENU;
-                    document.getElementById('load-level-modal').classList.add('hidden');
+                    this.loadLevelModalEl.classList.add('hidden');
                 }
                 // Reset lock when no buttons pressed
                 else if (!gp.buttons[0].pressed && !gp.buttons[1].pressed) {
@@ -1140,10 +1157,10 @@ class Game {
                 if (gp.buttons[0].pressed && !this.gamepadActionLocked) {
                     this.gamepadActionLocked = true;
                     console.log('A pressed, menuSelectedIndex:', this.menuSelectedIndex, 'button:', this.menuButtons[this.menuSelectedIndex]);
-                    const selectedBtn = document.getElementById(this.menuButtons[this.menuSelectedIndex]);
-                    if (selectedBtn && !selectedBtn.disabled) {
-                        console.log('Clicking button:', selectedBtn.id);
-                        selectedBtn.click();
+                    const selectedBtnEl = document.getElementById(this.menuButtons[this.menuSelectedIndex]);
+                    if (selectedBtnEl && !selectedBtnEl.disabled) {
+                        console.log('Clicking button:', selectedBtnEl.id);
+                        selectedBtnEl.click();
                     }
                 }
                 // Y - Level Editor (direct shortcut)
@@ -1152,8 +1169,8 @@ class Game {
                     this.levelEditor.reset();
                     this.sound.stopMenuMusic();
                     this.state = STATE.EDITOR;
-                    document.getElementById('menu-screen').classList.add('hidden');
-                    document.getElementById('editor-overlay').classList.remove('hidden');
+                    this.menuScreenEl.classList.add('hidden');
+                    this.editorOverlayEl.classList.remove('hidden');
                     this.updateMenuUI();
                     this.levelEditor.gamepadButtonLocked[3] = true;
                 }
@@ -1189,7 +1206,7 @@ class Game {
             this.prevState = STATE.PLAYING;
             this.state = STATE.PAUSED;
             this.pauseSelectedIndex = 0; // Reset to first button
-            document.getElementById('pause-overlay').classList.remove('hidden');
+            this.pauseOverlayEl.classList.remove('hidden');
             this.updatePauseSelection();
         }
         if (gp && !gp.buttons[9].pressed) {
@@ -2193,11 +2210,10 @@ class Game {
             // F3 - FPS Counter Toggle
             if (e.key === 'F3' && isKeyDown) {
                 this.showFPS = !this.showFPS;
-                const fpsCounter = document.getElementById('fps-counter');
                 if (this.showFPS) {
-                    fpsCounter.classList.remove('hidden');
+                    this.fpsCounterEl.classList.remove('hidden');
                 } else {
-                    fpsCounter.classList.add('hidden');
+                    this.fpsCounterEl.classList.add('hidden');
                 }
                 return;
             }
@@ -3230,12 +3246,12 @@ class Game {
         // Check directly above for falling/unstable rock
         const above = this.grid[y - 1][x];
         if (above === TYPES.ROCK || above === TYPES.DIAMOND) {
-            if (this.fallingEntities.has(`${x},${y - 1}`)) return true;
+            if (this.fallingEntities.has(tileKey(x, y - 1))) return true;
             // Check two tiles above for chain reaction
             if (y >= 2) {
                 const twoAbove = this.grid[y - 2][x];
                 if ((twoAbove === TYPES.ROCK || twoAbove === TYPES.DIAMOND) &&
-                    this.fallingEntities.has(`${x},${y - 2}`)) {
+                    this.fallingEntities.has(tileKey(x, y - 2))) {
                     return true;
                 }
             }
@@ -3530,18 +3546,18 @@ class Game {
     }
 
     updateUI() {
-        document.getElementById('score').innerText = this.score.toString().padStart(5, '0');
-        document.getElementById('diamonds').innerText = `${this.diamondsCollected}/${this.diamondsNeeded}`;
-        document.getElementById('time').innerText = Math.floor(this.timeLeft).toString().padStart(3, '0');
+        this.scoreEl.innerText = this.score.toString().padStart(5, '0');
+        this.diamondsEl.innerText = `${this.diamondsCollected}/${this.diamondsNeeded}`;
+        this.timeEl.innerText = Math.floor(this.timeLeft).toString().padStart(3, '0');
 
         // Show rogueDepth in Rogue mode, otherwise currentLevelIndex
         if (this.gameMode === GAME_MODES.ROGUE) {
-            document.getElementById('level').innerText = this.rogueDepth;
+            this.levelEl.innerText = this.rogueDepth;
         } else {
-            document.getElementById('level').innerText = this.currentLevelIndex + 1;
+            this.levelEl.innerText = this.currentLevelIndex + 1;
         }
 
-        document.getElementById('dynamite').innerText = this.dynamiteCount;
+        this.dynamiteEl.innerText = this.dynamiteCount;
     }
 
     pollGamepad() {
@@ -3997,7 +4013,7 @@ class Game {
         for (let y = GRID_HEIGHT - 2; y >= 0; y--) {
             for (let x = 0; x < GRID_WIDTH; x++) {
                 if (this.grid[y][x] === TYPES.ROCK || this.grid[y][x] === TYPES.DIAMOND) {
-                    const id = `${x},${y}`;
+                    const id = tileKey(x, y);
                     if (processed.has(id)) continue;
 
                     const type = this.grid[y][x];
@@ -4006,7 +4022,7 @@ class Game {
                     const below = this.grid[y + 1][x];
 
                     // Magic Wall Interaction
-                    if (below === TYPES.MAGIC_WALL && this.fallingEntities.has(`${x},${y}`)) {
+                    if (below === TYPES.MAGIC_WALL && this.fallingEntities.has(tileKey(x, y))) {
                         if (!this.magicWallActive) {
                             this.magicWallActive = true;
                             this.magicWallTimer = this.magicWallDuration;
@@ -4018,8 +4034,8 @@ class Game {
                             this.grid[y][x] = TYPES.EMPTY;
                             const newType = (type === TYPES.ROCK) ? TYPES.DIAMOND : TYPES.ROCK;
                             this.grid[y + 2][x] = newType;
-                            processed.add(`${x},${y + 2}`);
-                            this.fallingEntities.add(`${x},${y + 2}`);
+                            processed.add(tileKey(x, y + 2));
+                            this.fallingEntities.add(tileKey(x, y + 2));
                             this.sound.playTone(newType === TYPES.DIAMOND ? 880 : 220, 'sine', 0.1);
                             continue;
                         }
@@ -4029,23 +4045,23 @@ class Game {
                         // Fall down
                         this.grid[y][x] = TYPES.EMPTY;
                         this.grid[y + 1][x] = type;
-                        processed.add(`${x},${y + 1}`);
-                        this.fallingEntities.add(`${x},${y + 1}`); // Mark as falling
+                        processed.add(tileKey(x, y + 1));
+                        this.fallingEntities.add(tileKey(x, y + 1)); // Mark as falling
 
                         // Track falling duration
-                        const prevFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
-                        this.fallingEntityFrames.set(`${x},${y + 1}`, prevFrames + 1);
-                    } else if (this.fallingEntities.has(`${x},${y}`) && this.player.x === x && this.player.y === y + 1) {
+                        const prevFrames = this.fallingEntityFrames.get(tileKey(x, y)) || 0;
+                        this.fallingEntityFrames.set(tileKey(x, y + 1), prevFrames + 1);
+                    } else if (this.fallingEntities.has(tileKey(x, y)) && this.player.x === x && this.player.y === y + 1) {
                         // Crush player if rock has ANY momentum (1+ frames)
                         // This matches original Boulder Dash: you can't outrun a falling rock downwards
-                        const fallingFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
+                        const fallingFrames = this.fallingEntityFrames.get(tileKey(x, y)) || 0;
                         if (fallingFrames >= 1) {
                             this.die();
                         } else {
                             // Increment frame count while sitting on player so grace period eventually expires!
-                            this.fallingEntityFrames.set(`${x},${y}`, fallingFrames + 1);
+                            this.fallingEntityFrames.set(tileKey(x, y), fallingFrames + 1);
                         }
-                    } else if (this.fallingEntities.has(`${x},${y}`) && this.grid[y + 1][x] === TYPES.ENEMY) {
+                    } else if (this.fallingEntities.has(tileKey(x, y)) && this.grid[y + 1][x] === TYPES.ENEMY) {
                         // Crush enemy - remove the falling rock/diamond first
                         this.grid[y][x] = TYPES.EMPTY; // Rock/diamond is consumed
                         this.killEnemyAt(x, y + 1, 'rock');
@@ -4055,27 +4071,27 @@ class Game {
                             // Roll Left
                             this.grid[y][x] = TYPES.EMPTY;
                             this.grid[y][x - 1] = type;
-                            processed.add(`${x - 1},${y}`);
-                            this.fallingEntities.add(`${x - 1},${y}`);
-                            const prevFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
-                            this.fallingEntityFrames.set(`${x - 1},${y}`, prevFrames + 1);
+                            processed.add(tileKey(x - 1, y));
+                            this.fallingEntities.add(tileKey(x - 1, y));
+                            const prevFrames = this.fallingEntityFrames.get(tileKey(x, y)) || 0;
+                            this.fallingEntityFrames.set(tileKey(x - 1, y), prevFrames + 1);
                         } else if (this.grid[y][x + 1] === TYPES.EMPTY && this.grid[y + 1][x + 1] === TYPES.EMPTY) {
                             // Roll Right
                             this.grid[y][x] = TYPES.EMPTY;
                             this.grid[y][x + 1] = type;
-                            processed.add(`${x + 1},${y}`);
-                            this.fallingEntities.add(`${x + 1},${y}`);
-                            const prevFrames = this.fallingEntityFrames.get(`${x},${y}`) || 0;
-                            this.fallingEntityFrames.set(`${x + 1},${y}`, prevFrames + 1);
+                            processed.add(tileKey(x + 1, y));
+                            this.fallingEntities.add(tileKey(x + 1, y));
+                            const prevFrames = this.fallingEntityFrames.get(tileKey(x, y)) || 0;
+                            this.fallingEntityFrames.set(tileKey(x + 1, y), prevFrames + 1);
                         } else {
                             // Stopped falling
-                            this.fallingEntities.delete(`${x},${y}`);
-                            this.fallingEntityFrames.delete(`${x},${y}`);
+                            this.fallingEntities.delete(tileKey(x, y));
+                            this.fallingEntityFrames.delete(tileKey(x, y));
                         }
                     } else {
                         // Landed on dirt or something stable
-                        this.fallingEntities.delete(`${x},${y}`);
-                        this.fallingEntityFrames.delete(`${x},${y}`);
+                        this.fallingEntities.delete(tileKey(x, y));
+                        this.fallingEntityFrames.delete(tileKey(x, y));
                     }
                 }
             }
@@ -4084,6 +4100,9 @@ class Game {
 
     spawnParticles(x, y, color, count) {
         for (let i = 0; i < count; i++) {
+            if (this.particles.length >= MAX_PARTICLES) {
+                this.particles.shift(); // Remove oldest particle
+            }
             this.particles.push(new Particle(x, y, color, 2, 30));
         }
     }
@@ -4229,8 +4248,8 @@ class Game {
             this.showMessage(t("msg.testFailed"), t("msg.returnEditor"));
             setTimeout(() => {
                 this.state = STATE.EDITOR;
-                document.getElementById('editor-overlay').classList.remove('hidden');
-                document.getElementById('message-overlay').classList.add('hidden');
+                this.editorOverlayEl.classList.remove('hidden');
+                this.messageOverlayEl.classList.add('hidden');
                 this.isTesting = false;
             }, 2000);
             return;
@@ -4241,7 +4260,7 @@ class Game {
             this.deathTimeout = setTimeout(() => {
                 this.state = STATE.MENU;
                 this.sound.stopGameMusic();
-                document.getElementById('message-overlay').classList.add('hidden');
+                this.messageOverlayEl.classList.add('hidden');
                 this.updateMenuUI();
             }, 3000);
             return;
@@ -4252,7 +4271,7 @@ class Game {
             this.deathTimeout = setTimeout(() => {
                 this.state = STATE.MENU;
                 this.sound.stopGameMusic();
-                document.getElementById('message-overlay').classList.add('hidden');
+                this.messageOverlayEl.classList.add('hidden');
                 this.updateMenuUI();
             }, 3000);
             return;
@@ -4269,8 +4288,8 @@ class Game {
             this.sound.playWin();
             setTimeout(() => {
                 this.state = STATE.EDITOR;
-                document.getElementById('editor-overlay').classList.remove('hidden');
-                document.getElementById('message-overlay').classList.add('hidden');
+                this.editorOverlayEl.classList.remove('hidden');
+                this.messageOverlayEl.classList.add('hidden');
                 this.isTesting = false;
             }, 2000);
             return;
@@ -4345,7 +4364,7 @@ class Game {
                     if (this.customLevelData.description) {
                         this.showMessage(this.customLevelData.title || t("msg.levelStart"), this.customLevelData.description);
                         setTimeout(() => {
-                            document.getElementById('message-overlay').classList.add('hidden');
+                            this.messageOverlayEl.classList.add('hidden');
                             this.initLevel();
                             this.startGame();
                         }, 2000);
@@ -4474,21 +4493,17 @@ class Game {
     }
 
     showMessage(title, subtitle) {
-        const overlay = document.getElementById('message-overlay');
-        const titleEl = document.getElementById('message-title');
-        const subEl = document.getElementById('message-subtitle');
-
-        titleEl.innerText = title;
-        subEl.innerText = subtitle;
+        this.messageTitleEl.innerText = title;
+        this.messageSubtitleEl.innerText = subtitle;
 
         // Add keyboard-hint class if subtitle contains keyboard-specific instructions
         if (subtitle.includes('Press ')) {
-            subEl.classList.add('keyboard-hint');
+            this.messageSubtitleEl.classList.add('keyboard-hint');
         } else {
-            subEl.classList.remove('keyboard-hint');
+            this.messageSubtitleEl.classList.remove('keyboard-hint');
         }
 
-        overlay.classList.remove('hidden');
+        this.messageOverlayEl.classList.remove('hidden');
     }
 
     loop(timestamp) {

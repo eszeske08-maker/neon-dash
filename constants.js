@@ -62,3 +62,9 @@ const TYPES = {
     MAGIC_WALL: 11,
     AMOEBA: 12
 };
+
+// Performance: numeric tile key to avoid string allocation in hot paths
+function tileKey(x, y) { return y * GRID_WIDTH + x; }
+
+// Particle system limit
+const MAX_PARTICLES = 500;
