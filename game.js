@@ -1286,6 +1286,21 @@ class Game {
 
     constructor() {
         console.log('Game Constructor called');
+        this.initCanvas();
+        this.initState();
+        this.initMenuState();
+        this.initVisualEffects();
+        this.setupAudio();
+        this.setupEventListeners();
+        this.setupMenuButtons();
+
+        this.updateMenuUI();
+        this.loop = this.loop.bind(this);
+        requestAnimationFrame(this.loop);
+    }
+
+    // ── Canvas Setup ──────────────────────────────────────────────────
+    initCanvas() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.width = GRID_WIDTH * TILE_SIZE;
@@ -1294,9 +1309,12 @@ class Game {
         // Resize canvas to fit grid
         this.canvas.width = this.width;
         this.canvas.height = this.height;
+    }
 
+    // ── Game State Variables ──────────────────────────────────────────
+    initState() {
         this.state = STATE.MENU;
-        this.prevState = STATE.MENU;
+        this.prevState = null; // Store state before pause
 
         // Demo Mode Properties
         this.idleTimer = 0;
@@ -1341,6 +1359,29 @@ class Game {
         this.currentThemeIndex = 0;
         this.highScorePending = false;
 
+        this.highScorePage = 0;
+        this.highScoreTimer = 0;
+
+        // Quick Wins Features
+        this.showFPS = false;
+        this.fps = 60;
+        this.frameCount = 0;
+        this.fpsTime = 0;
+
+        // Environmental Effects System
+        this.envEffects = {
+            darkZone: false,
+            freeze: false,
+            earthquake: false
+        };
+        this.lightRadius = 4; // Visible radius in tiles
+        this.snowflakes = []; // For freeze effect
+        this.earthquakeTimer = 0;
+        this.earthquakeInterval = 6000; // ms between quakes
+    }
+
+    // ── Menu / Navigation State ──────────────────────────────────────
+    initMenuState() {
         // Menu Navigation
         this.menuSelectedIndex = 0;
         this.menuButtons = ['btn-campaign', 'btn-endless', 'btn-hardcore', 'btn-rogue', 'btn-load-level', 'btn-editor', 'btn-help'];
@@ -1361,7 +1402,10 @@ class Game {
         this.perkChoices = [];
         this.perkSelectedIndex = 0;
         this.deathTimeout = null; // Timeout ID for death->menu transition
+    }
 
+    // ── Visual Effects (Stars & Menu Particles) ─────────────────────
+    initVisualEffects() {
         // Background Stars
         this.stars = [];
         for (let i = 0; i < 100; i++) {
@@ -1386,38 +1430,13 @@ class Game {
                 scale: Math.random() * 0.7 + 0.8
             });
         }
+    }
 
-        // Input handling
-        this.keys = {};
-        this.gamepadInput = null;
-        this.gamepadActionLocked = false;
-        this.gamepadPauseLocked = false;
-
+    // ── Audio Setup ─────────────────────────────────────────────────
+    setupAudio() {
         this.sound = new SoundManager();
         this.highScores = new HighScoreManager();
         this.levelEditor = new LevelEditor(this);
-
-        this.highScorePage = 0;
-        this.highScoreTimer = 0;
-
-        // Quick Wins Features
-        this.showFPS = false;
-        this.fps = 60;
-        this.frameCount = 0;
-        this.fpsTime = 0;
-
-        this.prevState = null; // Store state before pause
-
-        // Environmental Effects System
-        this.envEffects = {
-            darkZone: false,
-            freeze: false,
-            earthquake: false
-        };
-        this.lightRadius = 4; // Visible radius in tiles
-        this.snowflakes = []; // For freeze effect
-        this.earthquakeTimer = 0;
-        this.earthquakeInterval = 6000; // ms between quakes
 
         // Load sound preference
         const soundEnabled = localStorage.getItem('soundEnabled');
@@ -1426,23 +1445,33 @@ class Game {
         }
 
         // Global Audio Unlocker
-        const unlockAudio = () => {
+        this.unlockAudio = () => {
             if (!this.sound.ctx || this.sound.ctx.state === 'suspended') {
                 this.sound.unlock();
             }
         };
+    }
+
+    // ── Event Listeners (window-level) ──────────────────────────────
+    setupEventListeners() {
+        // Input handling
+        this.keys = {};
+        this.gamepadInput = null;
+        this.gamepadActionLocked = false;
+        this.gamepadPauseLocked = false;
 
         window.addEventListener('keydown', (e) => {
             this.handleInput(e, true);
-            unlockAudio();
+            this.unlockAudio();
         });
         window.addEventListener('keyup', (e) => this.handleInput(e, false));
-        window.addEventListener('click', () => { unlockAudio(); this.resetIdle(); });
-        window.addEventListener('touchstart', () => { unlockAudio(); this.resetIdle(); });
+        window.addEventListener('click', () => { this.unlockAudio(); this.resetIdle(); });
+        window.addEventListener('touchstart', () => { this.unlockAudio(); this.resetIdle(); });
         window.addEventListener('mousemove', () => this.resetIdle());
+    }
 
-
-
+    // ── Menu & UI Button Bindings ───────────────────────────────────
+    setupMenuButtons() {
         // Pause Menu UI
         document.getElementById('btn-resume').addEventListener('click', () => {
             this.sound.playMenuConfirm();
@@ -1646,10 +1675,6 @@ class Game {
             fileInput.value = '';
             fileNameDisplay.textContent = '';
         });
-
-        this.updateMenuUI();
-        this.loop = this.loop.bind(this);
-        requestAnimationFrame(this.loop);
     }
 
     initLevel(isRestart = false) {
