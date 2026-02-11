@@ -69,6 +69,8 @@
                         LEVEL</button>
                     <button id="btn-editor" class="menu-button" role="menuitem" data-i18n="menu.editor">LEVEL
                         EDITOR</button>
+                    <button id="btn-achievements" class="menu-button special" role="menuitem"
+                        data-i18n="menu.achievements">ACHIEVEMENTS</button>
                     <button id="btn-help" class="menu-button" role="menuitem" data-i18n="menu.help">HELP</button>
                 </div>
                 <p class="menu-hint" data-i18n="menu.hint">Select a Game Mode to Start</p>
@@ -248,6 +250,24 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Achievements Modal -->
+            <div id="achievements-modal" class="hidden" role="dialog" aria-modal="true"
+                aria-labelledby="achievements-modal-title">
+                <div class="modal-content achievements-modal-content">
+                    <h2 id="achievements-modal-title" data-i18n="achievements.title">🏆 ACHIEVEMENTS</h2>
+                    <div class="achievements-stats">
+                        <span id="achievements-progress">0/0</span>
+                    </div>
+                    <div class="achievements-list" role="list" aria-label="Achievements list">
+                        <!-- Achievements dynamically injected by JS -->
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="btn-achievements-close" class="menu-button"
+                            data-i18n="achievements.close">BACK</button>
+                    </div>
+                </div>
+            </div>
             <div id="editor-overlay" class="hidden" role="toolbar" aria-label="Level Editor">
                 <div id="editor-toolbar">
                     <div id="editor-palette" role="listbox" aria-label="Object palette">
@@ -315,7 +335,16 @@
 
     <script src="i18n.js?v=1"></script>
     <script src="levelEditor.js?v=112"></script>
-    <script src="game.js?v=124"></script>
+    <script src="constants.js?v=1"></script>
+    <script src="themes.js?v=1"></script>
+    <script src="levels.js?v=1"></script>
+    <script src="particle.js?v=1"></script>
+    <script src="enemy.js?v=1"></script>
+    <script src="sound.js?v=1"></script>
+    <script src="highscores.js?v=1"></script>
+    <script src="achievements.js?v=1"></script>
+    <script src="settings.js?v=1"></script>
+    <script src="game.js?v=125"></script>
     <script src="mobile.js?v=111"></script>
     <!-- Service Worker Registration -->
     <script>

@@ -1,10 +1,19 @@
 // Neon Dash Service Worker
-const CACHE_NAME = 'neon-dash-v1';
+const CACHE_NAME = 'neon-dash-v2';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
     './style.css',
     './mobile.css',
+    './constants.js',
+    './themes.js',
+    './levels.js',
+    './particle.js',
+    './enemy.js',
+    './sound.js',
+    './highscores.js',
+    './achievements.js',
+    './settings.js',
     './game.js',
     './i18n.js',
     './mobile.js',
