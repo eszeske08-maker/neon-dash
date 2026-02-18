@@ -8,6 +8,7 @@ class SoundManager {
         this.enabled = localStorage.getItem('soundEnabled') !== 'false';
         this.musicInterval = null;
         this.menuMusicInterval = null;
+        this.noiseBuffer = null;
 
         // Volume levels (0-1)
         this.masterVolume = parseFloat(localStorage.getItem('volumeMaster') || '0.8');
@@ -37,7 +38,9 @@ class SoundManager {
 
     async playTone(freq, type, duration, vol = 1.0, isMusic = false) {
         if (!this.enabled || !this.ctx) return;
-        if (this.ctx.state === 'suspended') await this.ctx.resume();
+        if (this.ctx.state === 'suspended') {
+            try { await this.ctx.resume(); } catch (e) { }
+        }
 
         const effectiveVol = vol * this.getEffectiveVolume(isMusic);
         if (effectiveVol < 0.01) return; // Skip if too quiet
@@ -50,31 +53,50 @@ class SoundManager {
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         osc.connect(gain);
         gain.connect(this.ctx.destination);
+
+        osc.onended = () => {
+            osc.disconnect();
+            gain.disconnect();
+        };
+
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
     }
 
     async playNoise(duration, vol = 1.0) {
         if (!this.enabled || !this.ctx) return;
-        if (this.ctx.state === 'suspended') await this.ctx.resume();
+        if (this.ctx.state === 'suspended') {
+            try { await this.ctx.resume(); } catch (e) { }
+        }
 
         const effectiveVol = vol * this.getEffectiveVolume(false);
         if (effectiveVol < 0.01) return; // Skip if too quiet
 
-        const bufferSize = this.ctx.sampleRate * duration;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
+        // Create or reuse noise buffer (1 second duration)
+        if (!this.noiseBuffer) {
+            const bufferSize = this.ctx.sampleRate; // 1 second
+            this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = this.noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
         }
+
         const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
+        noise.buffer = this.noiseBuffer;
         const gain = this.ctx.createGain();
         gain.gain.setValueAtTime(effectiveVol * 0.2, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
         noise.connect(gain);
         gain.connect(this.ctx.destination);
+
+        noise.onended = () => {
+            noise.disconnect();
+            gain.disconnect();
+        };
+
         noise.start();
+        noise.stop(this.ctx.currentTime + duration);
     }
 
     playDig() { this.playNoise(0.05, 0.5); }
