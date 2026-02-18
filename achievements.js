@@ -17,16 +17,29 @@ const ACHIEVEMENTS = [
     { id: 'survivor', icon: '💀', category: 'challenge' }
 ];
 
+// Helper to safely load stats from localStorage
+function loadStat(key, defaultVal = 0) {
+    try {
+        const val = localStorage.getItem(key);
+        if (val === null) return defaultVal;
+        if (typeof defaultVal === 'boolean') return val === 'true';
+        return parseInt(val) || defaultVal;
+    } catch (e) {
+        console.error(`Error loading stat ${key}:`, e);
+        return defaultVal;
+    }
+}
+
 // Player stats (persisted to localStorage)
 const playerStats = {
-    totalDiamonds: parseInt(localStorage.getItem('stats_totalDiamonds')) || 0,
-    totalEnemiesKilledByRock: parseInt(localStorage.getItem('stats_enemiesKilledByRock')) || 0,
-    totalEnemiesKilledByTNT: parseInt(localStorage.getItem('stats_enemiesKilledByTNT')) || 0,
-    levelsCompleted: parseInt(localStorage.getItem('stats_levelsCompleted')) || 0,
-    campaignCompleted: localStorage.getItem('stats_campaignCompleted') === 'true',
-    maxEndlessLevel: parseInt(localStorage.getItem('stats_maxEndlessLevel')) || 0,
-    maxRogueDepth: parseInt(localStorage.getItem('stats_maxRogueDepth')) || 0,
-    maxHardcoreLevel: parseInt(localStorage.getItem('stats_maxHardcoreLevel')) || 0
+    totalDiamonds: loadStat('stats_totalDiamonds'),
+    totalEnemiesKilledByRock: loadStat('stats_enemiesKilledByRock'),
+    totalEnemiesKilledByTNT: loadStat('stats_enemiesKilledByTNT'),
+    levelsCompleted: loadStat('stats_levelsCompleted'),
+    campaignCompleted: loadStat('stats_campaignCompleted', false),
+    maxEndlessLevel: loadStat('stats_maxEndlessLevel'),
+    maxRogueDepth: loadStat('stats_maxRogueDepth'),
+    maxHardcoreLevel: loadStat('stats_maxHardcoreLevel')
 };
 
 // Unlocked achievements (persisted to localStorage)
@@ -130,12 +143,16 @@ function checkAchievements(game) {
 
 // Save stats to localStorage
 function savePlayerStats() {
-    localStorage.setItem('stats_totalDiamonds', playerStats.totalDiamonds);
-    localStorage.setItem('stats_enemiesKilledByRock', playerStats.totalEnemiesKilledByRock);
-    localStorage.setItem('stats_enemiesKilledByTNT', playerStats.totalEnemiesKilledByTNT);
-    localStorage.setItem('stats_levelsCompleted', playerStats.levelsCompleted);
-    localStorage.setItem('stats_campaignCompleted', playerStats.campaignCompleted);
-    localStorage.setItem('stats_maxEndlessLevel', playerStats.maxEndlessLevel);
-    localStorage.setItem('stats_maxRogueDepth', playerStats.maxRogueDepth);
-    localStorage.setItem('stats_maxHardcoreLevel', playerStats.maxHardcoreLevel);
+    try {
+        localStorage.setItem('stats_totalDiamonds', playerStats.totalDiamonds);
+        localStorage.setItem('stats_enemiesKilledByRock', playerStats.totalEnemiesKilledByRock);
+        localStorage.setItem('stats_enemiesKilledByTNT', playerStats.totalEnemiesKilledByTNT);
+        localStorage.setItem('stats_levelsCompleted', playerStats.levelsCompleted);
+        localStorage.setItem('stats_campaignCompleted', playerStats.campaignCompleted);
+        localStorage.setItem('stats_maxEndlessLevel', playerStats.maxEndlessLevel);
+        localStorage.setItem('stats_maxRogueDepth', playerStats.maxRogueDepth);
+        localStorage.setItem('stats_maxHardcoreLevel', playerStats.maxHardcoreLevel);
+    } catch (e) {
+        console.error('Error saving player stats:', e);
+    }
 }

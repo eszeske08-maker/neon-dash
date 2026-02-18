@@ -624,11 +624,16 @@ class Game {
             // Add some dynamite randomly for procedural levels
             for (let i = 0; i < 3; i++) {
                 let dx, dy;
+                let attempts = 0;
                 do {
                     dx = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
                     dy = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
-                } while (this.grid[dy][dx] !== TYPES.DIRT);
-                this.grid[dy][dx] = TYPES.DYNAMITE_PICKUP;
+                    attempts++;
+                } while (this.grid[dy][dx] !== TYPES.DIRT && attempts < 100);
+                
+                if (attempts < 100) {
+                    this.grid[dy][dx] = TYPES.DYNAMITE_PICKUP;
+                }
             }
 
             // Procedural Generation with random start and exit positions
