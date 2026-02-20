@@ -42,7 +42,9 @@ function initSettingsModal() {
 
         // Set current language
         if (typeof getCurrentLanguage === 'function') {
-            languageSelect.value = getCurrentLanguage();
+            const currentLang = getCurrentLanguage();
+            languageSelect.value = currentLang;
+            document.documentElement.lang = currentLang;
         }
     }
 

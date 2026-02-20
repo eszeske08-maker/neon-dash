@@ -2083,6 +2083,7 @@ const I18N = {
 
     // Translate all elements with data-i18n attribute
     translatePage() {
+        document.documentElement.lang = this.currentLang;
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             el.textContent = this.t(key);
@@ -2267,6 +2268,7 @@ function setLanguage(lang) {
     } else {
         I18N.currentLang = lang;
     }
+    document.documentElement.lang = I18N.currentLang;
     I18N.translatePage();
     I18N.generateHelpContent();
     console.log(`[i18n] Language set to: ${I18N.currentLang}`);
