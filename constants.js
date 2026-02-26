@@ -8,6 +8,11 @@ const GRID_WIDTH = 40;
 const GRID_HEIGHT = 22;
 const FPS = 60;
 
+// Global Mobile Detection
+window.isMobileDevice = function () {
+    return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+};
+
 // Game State
 const STATE = {
     MENU: 0,

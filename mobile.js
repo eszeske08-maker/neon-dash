@@ -9,10 +9,7 @@
             return;
         }
 
-        // Mobile device detection using User Agent (most reliable method)
-        function isMobileDevice() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        }
+        // Mobile device detection relies on window.isMobileDevice from constants.js
 
 
         function vib(p) { if (navigator.vibrate) navigator.vibrate(p); }
@@ -22,7 +19,7 @@
         if (mobileControls) {
             setInterval(() => {
                 // STATE.PLAYING = 1, and must be a mobile device
-                if (game.state === 1 && isMobileDevice()) {
+                if (game.state === 1 && window.isMobileDevice()) {
                     mobileControls.classList.add('visible');
                 } else {
                     mobileControls.classList.remove('visible');
@@ -63,20 +60,15 @@
                 // Check if player already has dynamite
                 if (game.dynamiteCount && game.dynamiteCount > 0) return true;
 
-                // Check if grid has any DYNAMITE_PICKUP (type 8)
-                if (game.grid) {
-                    for (let y = 0; y < game.grid.length; y++) {
-                        for (let x = 0; x < game.grid[y].length; x++) {
-                            if (game.grid[y][x] === 8) return true; // TYPES.DYNAMITE_PICKUP
-                        }
-                    }
-                }
+                // Check if grid has any DYNAMITE_PICKUP via state tracking
+                if (game.dynamiteOnMap && game.dynamiteOnMap > 0) return true;
+
                 return false;
             }
 
             // Show/hide TNT button based on dynamite availability
             setInterval(() => {
-                if (game.state === 1 && isMobileDevice() && hasDynamiteAvailable()) {
+                if (game.state === 1 && window.isMobileDevice() && hasDynamiteAvailable()) {
                     tnt.style.display = 'flex';
                 } else {
                     tnt.style.display = 'none';

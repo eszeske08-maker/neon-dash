@@ -81,6 +81,7 @@ class Game {
         this.diamondsCollected = 0;
         this.diamondsNeeded = 10;
         this.dynamiteCount = 0; // New: Dynamite Inventory
+        this.dynamiteOnMap = 0; // New: Dynamite on map for UI optimization
         this.bombs = []; // New: Active Bombs
         this.timeLeft = 150;
         this.lastTime = 0;
@@ -455,6 +456,7 @@ class Game {
         this.initialTime = levelDef.time; // Track initial time for speedrunner achievement
         this.diamondsCollected = 0;
         this.dynamiteCount = 0;
+        this.dynamiteOnMap = 0;
         this.bombs = [];
         this.particles = [];
         this.enemies = [];
@@ -630,7 +632,7 @@ class Game {
                     dy = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
                     attempts++;
                 } while (this.grid[dy][dx] !== TYPES.DIRT && attempts < 100);
-                
+
                 if (attempts < 100) {
                     this.grid[dy][dx] = TYPES.DYNAMITE_PICKUP;
                 }
@@ -787,6 +789,15 @@ class Game {
                 }
                 this.grid[e.y][e.x] = TYPES.ENEMY;
             });
+        }
+
+        // Count dynamite on map for performance optimization
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (this.grid[y][x] === TYPES.DYNAMITE_PICKUP) {
+                    this.dynamiteOnMap++;
+                }
+            }
         }
 
         // Set spawn blink timer for all modes (3 seconds)
@@ -3782,6 +3793,7 @@ class Game {
     collectDynamite(x, y) {
         this.grid[y][x] = TYPES.EMPTY;
         this.dynamiteCount++;
+        this.dynamiteOnMap = Math.max(0, this.dynamiteOnMap - 1);
         this.spawnParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, '#ff4444', 10);
         this.sound.playCollect(); // Reuse collect sound or new one? Reuse for now.
         this.updateUI();

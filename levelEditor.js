@@ -33,10 +33,7 @@ class LevelEditor {
         this.updateControlsUI(); // Force initial translation of hints
     }
 
-    // Mobile detection helper
-    isMobileDevice() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
+    // Mobile detection relies on window.isMobileDevice from constants.js
 
     initGrid() {
         for (let y = 0; y < this.height; y++) {
