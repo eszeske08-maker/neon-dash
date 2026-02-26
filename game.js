@@ -22,7 +22,71 @@ class Game {
 
         this.updateMenuUI();
         this.loop = this.loop.bind(this);
+
+        window.addEventListener('resize', this.resize.bind(this));
+        setTimeout(() => this.resize(), 0);
+
         requestAnimationFrame(this.loop);
+    }
+
+    // ── Window Resize ─────────────────────────────────────────────────
+    resize() {
+        const gameContainer = document.getElementById('game-container');
+        const uiLayer = document.getElementById('ui-layer');
+        if (!gameContainer || !this.canvas || !uiLayer) return;
+
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        const isMobile = windowWidth <= 768 && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+        const editorOverlay = document.getElementById('editor-overlay');
+        const isEditor = editorOverlay && !editorOverlay.classList.contains('hidden');
+
+        // Dynamically compute safe margins so UI doesn't overlap canvas
+        let paddingX = 0;
+        let paddingY = 160; // 80px safe headroom for HUD + 80px bottom
+
+        if (isEditor) {
+            paddingX = isMobile ? 0 : 360; // 180px safe space per side for Editor Tools
+            paddingY = isMobile ? 80 : 60; // Minimal top padding, no HUD
+        } else if (isMobile) {
+            paddingX = 0;
+            paddingY = 60; // Maximize canvas space on mobile
+        }
+
+        const maxCanvasWidth = Math.max(windowWidth - paddingX, 100);
+        const maxCanvasHeight = Math.max(windowHeight - paddingY, 100);
+
+        const scaleX = maxCanvasWidth / this.width;
+        const scaleY = maxCanvasHeight / this.height;
+        const scale = Math.min(scaleX, scaleY);
+        const dpr = window.devicePixelRatio || 1;
+
+        // Physical render resolution for crisp vectors (Rocks, Diamonds)
+        this.canvas.width = Math.floor(this.width * scale * dpr);
+        this.canvas.height = Math.floor(this.height * scale * dpr);
+
+        // CSS physical bounds
+        this.canvas.style.position = 'absolute';
+        this.canvas.style.left = '50%';
+        this.canvas.style.top = '50%';
+        this.canvas.style.width = `${this.width * scale}px`;
+        this.canvas.style.height = `${this.height * scale}px`;
+        this.canvas.style.transform = `translate(-50%, -50%)`;
+
+        // Scale internal logical context so coordinates remain native (1280x70)
+        if (this.ctx) {
+            this.ctx.scale(scale * dpr, scale * dpr);
+            this.ctx.imageSmoothingEnabled = false; // keeps straight lines crisp
+        }
+
+        uiLayer.style.position = 'absolute';
+        uiLayer.style.left = '50%';
+        uiLayer.style.top = '50%';
+        // Use exact un-padded viewport bounds with reverse scaling
+        uiLayer.style.width = `${windowWidth / scale}px`;
+        uiLayer.style.height = `${windowHeight / scale}px`;
+        uiLayer.style.transform = `translate(-50%, -50%) scale(${scale})`;
     }
 
     // ── Canvas Setup ──────────────────────────────────────────────────
@@ -35,6 +99,7 @@ class Game {
         // Resize canvas to fit grid
         this.canvas.width = this.width;
         this.canvas.height = this.height;
+        this.ctx.imageSmoothingEnabled = false;
     }
 
     // ── DOM Element Cache (avoid per-frame getElementById calls) ─────
@@ -52,6 +117,12 @@ class Game {
         this.menuScreenEl = document.getElementById('menu-screen');
         this.editorOverlayEl = document.getElementById('editor-overlay');
         this.loadLevelModalEl = document.getElementById('load-level-modal');
+
+        // Automatically trigger resize when editor overlay is toggled
+        if (this.editorOverlayEl) {
+            const observer = new MutationObserver(() => this.resize());
+            observer.observe(this.editorOverlayEl, { attributes: true, attributeFilter: ['class'] });
+        }
     }
 
     // ── Game State Variables ──────────────────────────────────────────
@@ -1537,7 +1608,7 @@ class Game {
         switch (type) {
             case TYPES.DIRT:
                 this.ctx.fillStyle = this.currentTheme.dirtColor;
-                this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+                this.ctx.fillRect(cx, cy, TILE_SIZE + 1, TILE_SIZE + 1);
                 this.ctx.fillStyle = this.currentTheme.dirtDetail;
                 this.ctx.fillRect(cx + 4, cy + 4, 4, 4);
                 this.ctx.fillRect(cx + 20, cy + 10, 4, 4);
@@ -1551,7 +1622,7 @@ class Game {
                 } else {
                     // Inner Wall Style (Original / Brick-like)
                     this.ctx.fillStyle = this.currentTheme[TYPES.WALL];
-                    this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+                    this.ctx.fillRect(cx, cy, TILE_SIZE + 1, TILE_SIZE + 1);
                     this.ctx.strokeStyle = this.currentTheme.wallGlow;
                     this.ctx.lineWidth = 2;
                     this.ctx.strokeRect(cx + 2, cy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
@@ -1587,7 +1658,7 @@ class Game {
                 if (this.magicWallActive) {
                     // Active Magic Wall Animation
                     this.ctx.fillStyle = this.currentTheme[TYPES.WALL];
-                    this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+                    this.ctx.fillRect(cx, cy, TILE_SIZE + 1, TILE_SIZE + 1);
 
                     // Static/Noise effect
                     this.ctx.fillStyle = Math.random() < 0.5 ? '#ffffff' : this.currentTheme.wallGlow;
@@ -1604,7 +1675,7 @@ class Game {
                 } else {
                     // Inactive: Looks like normal wall
                     this.ctx.fillStyle = this.currentTheme[TYPES.WALL];
-                    this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+                    this.ctx.fillRect(cx, cy, TILE_SIZE + 1, TILE_SIZE + 1);
                     this.ctx.strokeStyle = this.currentTheme.wallGlow;
                     this.ctx.lineWidth = 2;
                     this.ctx.strokeRect(cx + 2, cy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
@@ -1614,7 +1685,7 @@ class Game {
                 break;
             case TYPES.AMOEBA:
                 this.ctx.fillStyle = this.currentTheme[TYPES.AMOEBA];
-                this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+                this.ctx.fillRect(cx, cy, TILE_SIZE + 1, TILE_SIZE + 1);
 
                 // Bubbling effect
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
@@ -1633,7 +1704,7 @@ class Game {
 
         // Base
         this.ctx.fillStyle = wallColor;
-        this.ctx.fillRect(cx, cy, TILE_SIZE, TILE_SIZE);
+        this.ctx.fillRect(cx, cy, TILE_SIZE + 1, TILE_SIZE + 1);
 
         // 3D Bevel Effect
         this.ctx.lineWidth = 2;

@@ -83,11 +83,9 @@ class LevelEditor {
 
         const touch = e.touches[0];
         const rect = this.game.canvas.getBoundingClientRect();
-        const scaleX = this.game.canvas.width / rect.width;
-        const scaleY = this.game.canvas.height / rect.height;
 
-        const x = Math.floor(((touch.clientX - rect.left) * scaleX) / TILE_SIZE);
-        const y = Math.floor(((touch.clientY - rect.top) * scaleY) / TILE_SIZE);
+        const x = Math.floor((touch.clientX - rect.left) / (rect.width / this.width));
+        const y = Math.floor((touch.clientY - rect.top) / (rect.height / this.height));
 
         this.cursorX = x;
         this.cursorY = y;
@@ -109,11 +107,9 @@ class LevelEditor {
 
         const touch = e.touches[0];
         const rect = this.game.canvas.getBoundingClientRect();
-        const scaleX = this.game.canvas.width / rect.width;
-        const scaleY = this.game.canvas.height / rect.height;
 
-        const x = Math.floor(((touch.clientX - rect.left) * scaleX) / TILE_SIZE);
-        const y = Math.floor(((touch.clientY - rect.top) * scaleY) / TILE_SIZE);
+        const x = Math.floor((touch.clientX - rect.left) / (rect.width / this.width));
+        const y = Math.floor((touch.clientY - rect.top) / (rect.height / this.height));
 
         this.cursorX = x;
         this.cursorY = y;
@@ -319,11 +315,9 @@ class LevelEditor {
         if (this.game.state !== STATE.EDITOR) return;
 
         const rect = this.game.canvas.getBoundingClientRect();
-        const scaleX = this.game.canvas.width / rect.width;
-        const scaleY = this.game.canvas.height / rect.height;
 
-        const x = Math.floor(((e.clientX - rect.left) * scaleX) / TILE_SIZE);
-        const y = Math.floor(((e.clientY - rect.top) * scaleY) / TILE_SIZE);
+        const x = Math.floor((e.clientX - rect.left) / (rect.width / this.width));
+        const y = Math.floor((e.clientY - rect.top) / (rect.height / this.height));
 
         this.cursorX = x;
         this.cursorY = y;
@@ -343,11 +337,9 @@ class LevelEditor {
         if (this.game.state !== STATE.EDITOR) return;
 
         const rect = this.game.canvas.getBoundingClientRect();
-        const scaleX = this.game.canvas.width / rect.width;
-        const scaleY = this.game.canvas.height / rect.height;
 
-        const x = Math.floor(((e.clientX - rect.left) * scaleX) / TILE_SIZE);
-        const y = Math.floor(((e.clientY - rect.top) * scaleY) / TILE_SIZE);
+        const x = Math.floor((e.clientX - rect.left) / (rect.width / this.width));
+        const y = Math.floor((e.clientY - rect.top) / (rect.height / this.height));
 
         this.cursorX = x;
         this.cursorY = y;
