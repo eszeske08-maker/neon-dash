@@ -65,7 +65,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - network-first for local origin, fallback to cache
+// Fetch event - Stale-while-revalidate strategy for local assets
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
@@ -75,20 +75,29 @@ self.addEventListener('fetch', (event) => {
     if (url.origin !== self.location.origin) return;
 
     event.respondWith(
-        fetch(event.request)
-            .then((response) => {
-                // If we got a valid response, cache it and return it
-                if (response && response.status === 200 && response.type === 'basic') {
-                    const responseClone = response.clone();
+        caches.match(event.request).then((cachedResponse) => {
+            const fetchPromise = fetch(event.request).then((networkResponse) => {
+                // If we got a valid response, update the cache
+                if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+                    const responseClone = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, responseClone);
                     });
                 }
-                return response;
-            })
-            .catch(() => {
-                // Network failed, try cache
-                return caches.match(event.request);
-            })
+                return networkResponse;
+            }).catch((error) => {
+                console.warn('[SW] Network fetch failed (offline mode or slow connection).', error);
+                // If the file was not in the cache, returning undefined here allows the browser to handle the failure gracefully
+            });
+
+            if (cachedResponse) {
+                // Return immediately from cache (stale), while validating/updating in the background
+                event.waitUntil(fetchPromise);
+                return cachedResponse;
+            }
+
+            // Not in cache, wait for the network response to fetch it for the first time
+            return fetchPromise;
+        })
     );
 });
