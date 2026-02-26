@@ -93,52 +93,24 @@ function showAchievementPopup(id) {
     }, 3000);
 }
 
+// Achievement unlock conditions mapping
+const achievementConditions = [
+    { id: 'firstSteps', condition: () => playerStats.levelsCompleted >= 1 },
+    { id: 'minerComplete', condition: () => playerStats.campaignCompleted },
+    { id: 'endlessRunner', condition: () => playerStats.maxEndlessLevel >= 10 },
+    { id: 'deepDigger', condition: () => playerStats.maxRogueDepth >= 20 },
+    { id: 'gemCollector', condition: () => playerStats.totalDiamonds >= 100 },
+    { id: 'diamondHoarder', condition: () => playerStats.totalDiamonds >= 1000 },
+    { id: 'crusher', condition: () => playerStats.totalEnemiesKilledByRock >= 1 },
+    { id: 'demolitionExpert', condition: () => playerStats.totalEnemiesKilledByTNT >= 10 },
+    { id: 'survivor', condition: () => playerStats.maxHardcoreLevel >= 5 }
+];
+
 // Check and unlock achievements based on current stats
-function checkAchievements(game) {
-    // First Steps - Complete first level
-    if (playerStats.levelsCompleted >= 1) {
-        unlockAchievement('firstSteps');
-    }
-
-    // Miner Complete - Campaign finished
-    if (playerStats.campaignCompleted) {
-        unlockAchievement('minerComplete');
-    }
-
-    // Endless Runner - 10 levels in endless mode
-    if (playerStats.maxEndlessLevel >= 10) {
-        unlockAchievement('endlessRunner');
-    }
-
-    // Deep Digger - Rogue depth 20
-    if (playerStats.maxRogueDepth >= 20) {
-        unlockAchievement('deepDigger');
-    }
-
-    // Gem Collector - 100 total diamonds
-    if (playerStats.totalDiamonds >= 100) {
-        unlockAchievement('gemCollector');
-    }
-
-    // Diamond Hoarder - 1000 total diamonds
-    if (playerStats.totalDiamonds >= 1000) {
-        unlockAchievement('diamondHoarder');
-    }
-
-    // Crusher - Kill enemy with rock
-    if (playerStats.totalEnemiesKilledByRock >= 1) {
-        unlockAchievement('crusher');
-    }
-
-    // Demolition Expert - 10 enemies with TNT
-    if (playerStats.totalEnemiesKilledByTNT >= 10) {
-        unlockAchievement('demolitionExpert');
-    }
-
-    // Survivor - 5+ levels in hardcore
-    if (playerStats.maxHardcoreLevel >= 5) {
-        unlockAchievement('survivor');
-    }
+function checkAchievements() {
+    achievementConditions.forEach(({ id, condition }) => {
+        if (condition()) unlockAchievement(id);
+    });
 }
 
 // Save stats to localStorage

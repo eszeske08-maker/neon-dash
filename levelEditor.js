@@ -296,7 +296,7 @@ class LevelEditor {
 
         // Select/Back = Exit to Menu
         checkButton(8, () => {
-            this.game.state = 0; // STATE.MENU
+            this.game.state = STATE.MENU;
             document.getElementById('editor-overlay').classList.add('hidden');
             document.getElementById('menu-screen').classList.remove('hidden');
             this.game.gamepadActionLocked = true;

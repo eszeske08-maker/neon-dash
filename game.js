@@ -3813,7 +3813,7 @@ class Game {
         // Track total diamonds for achievements
         playerStats.totalDiamonds++;
         savePlayerStats();
-        checkAchievements(this);
+        checkAchievements();
 
         // Trigger Flash if Exit opens
         if (this.diamondsCollected === this.diamondsNeeded) {
@@ -3880,7 +3880,7 @@ class Game {
                             // Track TNT kills for achievements
                             playerStats.totalEnemiesKilledByTNT++;
                             savePlayerStats();
-                            checkAchievements(this);
+                            checkAchievements();
                         }
                         this.grid[y][x] = TYPES.EMPTY;
                         this.spawnParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, '#ff0000', 20);
@@ -4140,7 +4140,7 @@ class Game {
             playerStats.totalEnemiesKilledByTNT++;
         }
         savePlayerStats();
-        checkAchievements(this);
+        checkAchievements();
 
         this.grid[y][x] = TYPES.EMPTY;
 
@@ -4356,7 +4356,7 @@ class Game {
         }
 
         savePlayerStats();
-        checkAchievements(this);
+        checkAchievements();
 
         // Handle Rogue Miner Mode - show perk selection
         if (this.gameMode === GAME_MODES.ROGUE) {

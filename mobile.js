@@ -18,8 +18,8 @@
         const mobileControls = document.getElementById('mobile-controls');
         if (mobileControls) {
             setInterval(() => {
-                // STATE.PLAYING = 1, and must be a mobile device
-                if (game.state === 1 && window.isMobileDevice()) {
+                // Check if playing and on mobile device
+                if (game.state === STATE.PLAYING && window.isMobileDevice()) {
                     mobileControls.classList.add('visible');
                 } else {
                     mobileControls.classList.remove('visible');
@@ -47,7 +47,7 @@
             const h = e => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (game.state === 1 && game.placeDynamite) {
+                if (game.state === STATE.PLAYING && game.placeDynamite) {
                     game.placeDynamite();
                     vib(30);
                 }
@@ -68,7 +68,7 @@
 
             // Show/hide TNT button based on dynamite availability
             setInterval(() => {
-                if (game.state === 1 && window.isMobileDevice() && hasDynamiteAvailable()) {
+                if (game.state === STATE.PLAYING && window.isMobileDevice() && hasDynamiteAvailable()) {
                     tnt.style.display = 'flex';
                 } else {
                     tnt.style.display = 'none';
@@ -86,15 +86,15 @@
                 if (lock) return;
                 lock = true;
                 setTimeout(() => lock = false, 300);
-                if (game.state === 1) {
-                    game.prevState = 1; // Save previous state
-                    game.state = 6;
+                if (game.state === STATE.PLAYING) {
+                    game.prevState = STATE.PLAYING; // Save previous state
+                    game.state = STATE.PAUSED;
                     game.pauseSelectedIndex = 0; // Reset selection to first button
                     document.getElementById('pause-overlay').classList.remove('hidden');
                     if (game.updatePauseSelection) game.updatePauseSelection();
                 }
-                else if (game.state === 6) {
-                    game.state = game.prevState || 1; // Restore previous state
+                else if (game.state === STATE.PAUSED) {
+                    game.state = game.prevState || STATE.PLAYING; // Restore previous state
                     document.getElementById('pause-overlay').classList.add('hidden');
                 }
                 vib(15);
@@ -124,23 +124,23 @@
 
         if (rb) {
             const restart = () => {
-                if (game.state === 2 || game.state === 3) {
+                if (game.state === STATE.GAMEOVER || game.state === STATE.WIN) {
                     if (!game.highScorePending) {
                         document.getElementById('message-overlay').classList.add('hidden');
                         rb.classList.add('hidden');
 
                         // In Hardcore/Rogue mode, go straight to menu (no restart allowed)
                         if (game.gameMode === 'hardcore' || game.gameMode === 'rogue') {
-                            game.state = 0; // STATE.MENU
+                            game.state = STATE.MENU;
                             game.sound.stopGameMusic();
                             game.updateMenuUI();
                             return;
                         }
 
-                        if (game.state === 2) {
+                        if (game.state === STATE.GAMEOVER) {
                             // GAMEOVER: restart current level only
                             game.restartCurrentLevel();
-                        } else if (game.state === 3) {
+                        } else if (game.state === STATE.WIN) {
                             // WIN: restart from beginning
                             if (game.currentLevelIndex >= 10) game.currentLevelIndex = 0;
                             game.resetGame();
@@ -155,11 +155,11 @@
             let lastS = game.state;
             setInterval(() => {
                 const s = game.state;
-                if ((s === 2 || s === 3) && lastS !== s) {
+                if ((s === STATE.GAMEOVER || s === STATE.WIN) && lastS !== s) {
                     rb.classList.remove('hidden');
                     rb.style.display = 'block';
                     rb.style.visibility = 'visible';
-                } else if (s !== 2 && s !== 3 && (lastS === 2 || lastS === 3)) {
+                } else if (s !== STATE.GAMEOVER && s !== STATE.WIN && (lastS === STATE.GAMEOVER || lastS === STATE.WIN)) {
                     rb.classList.add('hidden');
                 }
                 lastS = s;
@@ -192,8 +192,8 @@
 
             // Exit button
             addEditorBtn('editor-btn-exit', () => {
-                if (game.state === 7 && game.levelEditor) { // STATE.EDITOR = 7
-                    game.state = 0; // STATE.MENU
+                if (game.state === STATE.EDITOR && game.levelEditor) {
+                    game.state = STATE.MENU;
                     document.getElementById('editor-overlay').classList.add('hidden');
                     document.getElementById('menu-screen').classList.remove('hidden');
                 }
@@ -214,7 +214,7 @@
                     const types = [0, 1, 2, 3]; // BASIC, SEEKER, PATROLLER, BUTTERFLY
                     const idx = types.indexOf(editor.selectedEnemyType);
                     editor.selectedEnemyType = types[(idx + 1) % types.length];
-                    editor.selectedTile = 6; // TYPES.ENEMY
+                    editor.selectedTile = TYPES.ENEMY;
                     editor.updatePaletteUI();
 
                     const indicator = document.getElementById('mob-enemy-type');
