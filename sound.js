@@ -36,7 +36,7 @@ class SoundManager {
         return base * this.masterVolume;
     }
 
-    async playTone(freq, type, duration, vol = 1.0, isMusic = false) {
+    async playTone(freq, type, duration, vol = 1.0, isMusic = false, startTime = 0) {
         if (!this.enabled || !this.ctx) return;
         if (this.ctx.state === 'suspended') {
             try { await this.ctx.resume(); } catch (e) { }
@@ -45,22 +45,35 @@ class SoundManager {
         const effectiveVol = vol * this.getEffectiveVolume(isMusic);
         if (effectiveVol < 0.01) return; // Skip if too quiet
 
+        const time = startTime || this.ctx.currentTime;
+
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        gain.gain.setValueAtTime(effectiveVol * 0.3, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        osc.frequency.setValueAtTime(freq, time);
+        gain.gain.setValueAtTime(effectiveVol * 0.3, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
         osc.connect(gain);
         gain.connect(this.ctx.destination);
 
         osc.onended = () => {
             osc.disconnect();
             gain.disconnect();
+            if (isMusic && this.activeMusicNodes) {
+                const idx = this.activeMusicNodes.indexOf(osc);
+                if (idx !== -1) {
+                    this.activeMusicNodes.splice(idx, 1);
+                }
+            }
         };
 
-        osc.start();
-        osc.stop(this.ctx.currentTime + duration);
+        osc.start(time);
+        osc.stop(time + duration);
+
+        if (isMusic) {
+            if (!this.activeMusicNodes) this.activeMusicNodes = [];
+            this.activeMusicNodes.push(osc);
+        }
     }
 
     async playNoise(duration, vol = 1.0) {
@@ -244,29 +257,61 @@ class SoundManager {
         ];
 
         const music = themeMusic[themeIndex % themeMusic.length];
-        let noteIndex = 0;
-        let arpIndex = 0;
 
-        this.musicInterval = setInterval(() => {
-            // Bass line
-            const freq = music.bassLine[noteIndex];
-            this.playTone(freq, music.waveform, 0.1, music.volume, true);
+        this.musicActive = true;
+        this.nextGameNoteTime = this.ctx ? (this.ctx.currentTime + 0.05) : null;
+        this.gameNoteIndex = 0;
+        this.gameArpIndex = 0;
+        this.gameMusicDef = music;
+        this.musicInterval = true; // placeholder for checks
 
-            // Arpeggio (every other note for most themes)
-            if (music.arpEnabled && noteIndex % 2 === 0) {
-                const arpFreq = music.arpNotes[arpIndex % music.arpNotes.length];
-                this.playTone(arpFreq, music.arpWave, 0.05, music.volume * 0.4, true);
-                arpIndex++;
+        const schedule = () => {
+            if (!this.musicActive) return;
+            if (!this.ctx) {
+                // Wait for the context to be initialized (user interaction)
+                this.musicInterval = setTimeout(schedule, 50);
+                return;
+            }
+            if (this.nextGameNoteTime === null) {
+                this.nextGameNoteTime = this.ctx.currentTime + 0.05;
             }
 
-            noteIndex = (noteIndex + 1) % music.bassLine.length;
-        }, music.tempo);
+            const m = this.gameMusicDef;
+            const scheduleAheadTime = 0.15; // 150ms
+
+            while (this.nextGameNoteTime < this.ctx.currentTime + scheduleAheadTime) {
+                // Bass line
+                const freq = m.bassLine[this.gameNoteIndex];
+                this.playTone(freq, m.waveform, 0.1, m.volume, true, this.nextGameNoteTime);
+
+                // Arpeggio (every other note for most themes)
+                if (m.arpEnabled && this.gameNoteIndex % 2 === 0) {
+                    const arpFreq = m.arpNotes[this.gameArpIndex % m.arpNotes.length];
+                    this.playTone(arpFreq, m.arpWave, 0.05, m.volume * 0.4, true, this.nextGameNoteTime);
+                    this.gameArpIndex++;
+                }
+
+                this.nextGameNoteTime += m.tempo / 1000.0;
+                this.gameNoteIndex = (this.gameNoteIndex + 1) % m.bassLine.length;
+            }
+
+            this.musicInterval = setTimeout(schedule, 50);
+        };
+
+        schedule();
     }
 
     stopGameMusic() {
-        if (this.musicInterval) {
-            clearInterval(this.musicInterval);
-            this.musicInterval = null;
+        this.musicActive = false;
+        if (this.musicInterval && typeof this.musicInterval === 'number') {
+            clearTimeout(this.musicInterval);
+        }
+        this.musicInterval = null;
+        if (this.activeMusicNodes) {
+            this.activeMusicNodes.forEach(osc => {
+                try { osc.stop(); } catch (e) { }
+            });
+            this.activeMusicNodes = [];
         }
     }
 
@@ -276,31 +321,61 @@ class SoundManager {
 
         // Synthwave Bass Sequence (Am - F - C - G)
         const notes = [110.00, 87.31, 130.81, 98.00]; // Root notes
-        let step = 0;
 
-        this.menuMusicInterval = setInterval(() => {
-            const root = notes[Math.floor(step / 8) % 4];
+        this.menuMusicActive = true;
+        this.nextMenuNoteTime = this.ctx ? (this.ctx.currentTime + 0.05) : null;
+        this.menuStep = 0;
+        this.menuMusicInterval = true; // placeholder for checks
 
-            // Bass (Sawtooth) - Pumping effect
-            if (step % 2 === 0) {
-                this.playTone(root, 'sawtooth', 0.2, 0.15, true);
-            } else {
-                this.playTone(root, 'sawtooth', 0.1, 0.1, true); // Off-beat lighter
+        const schedule = () => {
+            if (!this.menuMusicActive) return;
+            if (!this.ctx) {
+                // Wait for the context to be initialized (user interaction)
+                this.menuMusicInterval = setTimeout(schedule, 50);
+                return;
+            }
+            if (this.nextMenuNoteTime === null) {
+                this.nextMenuNoteTime = this.ctx.currentTime + 0.05;
             }
 
-            // Arpeggio (Square) - Cyberpunk feel
-            const arpNotes = [root * 2, root * 3, root * 4, root * 3];
-            const arpNote = arpNotes[step % 4];
-            this.playTone(arpNote, 'square', 0.05, 0.05, true);
+            const scheduleAheadTime = 0.15; // 150ms
 
-            step++;
-        }, 200); // ~150 BPM (double time feel)
+            while (this.nextMenuNoteTime < this.ctx.currentTime + scheduleAheadTime) {
+                const root = notes[Math.floor(this.menuStep / 8) % 4];
+
+                // Bass (Sawtooth) - Pumping effect
+                if (this.menuStep % 2 === 0) {
+                    this.playTone(root, 'sawtooth', 0.2, 0.15, true, this.nextMenuNoteTime);
+                } else {
+                    this.playTone(root, 'sawtooth', 0.1, 0.1, true, this.nextMenuNoteTime); // Off-beat lighter
+                }
+
+                // Arpeggio (Square) - Cyberpunk feel
+                const arpNotes = [root * 2, root * 3, root * 4, root * 3];
+                const arpNote = arpNotes[this.menuStep % 4];
+                this.playTone(arpNote, 'square', 0.05, 0.05, true, this.nextMenuNoteTime);
+
+                this.nextMenuNoteTime += 200 / 1000.0; // 200ms tempo
+                this.menuStep++;
+            }
+
+            this.menuMusicInterval = setTimeout(schedule, 50);
+        };
+
+        schedule();
     }
 
     stopMenuMusic() {
-        if (this.menuMusicInterval) {
-            clearInterval(this.menuMusicInterval);
-            this.menuMusicInterval = null;
+        this.menuMusicActive = false;
+        if (this.menuMusicInterval && typeof this.menuMusicInterval === 'number') {
+            clearTimeout(this.menuMusicInterval);
+        }
+        this.menuMusicInterval = null;
+        if (this.activeMusicNodes) {
+            this.activeMusicNodes.forEach(osc => {
+                try { osc.stop(); } catch (e) { }
+            });
+            this.activeMusicNodes = [];
         }
     }
 }
