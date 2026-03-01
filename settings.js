@@ -6,7 +6,8 @@
 const gameSettings = {
     colorblindMode: localStorage.getItem('colorblindMode') || 'off',
     language: localStorage.getItem('gameLanguage') || 'auto',
-    tutorialEnabled: localStorage.getItem('tutorialEnabled') !== 'false',
+    // Now defaults to false (off) instead of true (on)
+    tutorialEnabled: localStorage.getItem('tutorialEnabled') === 'true',
     tutorialCompleted: localStorage.getItem('tutorialCompleted') === 'true'
 };
 
