@@ -274,22 +274,28 @@
                         <!-- Palette items injected by JS -->
                     </div>
                 </div>
-                <div id="editor-info" aria-label="Editor shortcuts">
-                    <span id="hint-exit">L: Exit Editor</span>
-                    <span id="hint-grid">G: Toggle Grid</span>
-                    <span id="hint-enemy">E: Cycle Enemy (<span id="enemy-type-indicator"
-                            aria-live="polite">BASIC</span>)</span>
-                    <span id="hint-test">T: Test Play</span>
-                    <span id="hint-save">S: Save</span>
-                    <span id="hint-load">O: Load</span>
-                    <span id="hint-tool">1-8: Select Tool</span>
-                    <span id="hint-erase">Right Click: Erase</span>
-                </div>
-                <div id="editor-export">
-                    <button id="btn-copy-level" class="export-btn" aria-label="Copy level JSON to clipboard"
-                        data-i18n="editor.copyJson">📋 Copy JSON</button>
-                    <button id="btn-download-level" class="export-btn" aria-label="Download level as JSON file"
-                        data-i18n="editor.download">💾 Download</button>
+                <div id="editor-right-panel">
+                    <div id="editor-info" aria-label="Editor shortcuts">
+                        <span id="hint-exit">L: Exit Editor</span>
+                        <span id="hint-grid">G: Toggle Grid</span>
+                        <span id="hint-enemy">E: Cycle Enemy (<span id="enemy-type-indicator"
+                                aria-live="polite">BASIC</span>)</span>
+                        <span id="hint-test">T: Test Play</span>
+                        <span id="hint-save">S: Save</span>
+                        <span id="hint-load">O: Load</span>
+                        <span id="hint-tool">1-8: Select Tool</span>
+                        <span id="hint-erase">Right Click: Erase</span>
+                    </div>
+                    <div id="editor-export">
+                        <button id="btn-undo-level" class="export-btn" aria-label="Undo action" disabled
+                            data-i18n="editor.undo">UNDO</button>
+                        <button id="btn-redo-level" class="export-btn" aria-label="Redo action" disabled
+                            data-i18n="editor.redo">REDO</button>
+                        <button id="btn-copy-level" class="export-btn" aria-label="Copy level JSON to clipboard"
+                            data-i18n="editor.copyJson">📋 Copy JSON</button>
+                        <button id="btn-download-level" class="export-btn" aria-label="Download level as JSON file"
+                            data-i18n="editor.download">💾 Download</button>
+                    </div>
                 </div>
                 <!-- Mobile Editor Toolbar -->
                 <div id="editor-mobile-toolbar" class="mobile-only" role="toolbar" aria-label="Mobile editor tools">
@@ -307,6 +313,10 @@
                             data-i18n="editor.save">SAVE</span></button>
                     <button id="editor-btn-load" class="editor-mobile-btn" aria-label="Load level">📂<br><span
                             data-i18n="editor.load">LOAD</span></button>
+                    <button id="editor-btn-undo" class="editor-mobile-btn" aria-label="Undo action" disabled>↩️<br><span
+                            data-i18n="editor.undo">UNDO</span></button>
+                    <button id="editor-btn-redo" class="editor-mobile-btn" aria-label="Redo action" disabled>↪️<br><span
+                            data-i18n="editor.redo">REDO</span></button>
                     <button id="editor-btn-copy" class="editor-mobile-btn"
                         aria-label="Copy JSON to clipboard">📋<br><span data-i18n="editor.copy">COPY</span></button>
                     <button id="editor-btn-download" class="editor-mobile-btn"

@@ -513,7 +513,6 @@ canvas {
     display: none !important;
 }
 
-/* Level Editor UI */
 #editor-overlay {
     position: absolute;
     top: 0;
@@ -524,7 +523,7 @@ canvas {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding: 20px;
 }
 
@@ -536,6 +535,8 @@ canvas {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
 }
 
 #editor-toolbar button {
@@ -580,7 +581,6 @@ canvas {
 #editor-info {
     pointer-events: auto;
     background: rgba(0, 0, 0, 0.8);
-    border: 1px solid #00ffff;
     padding: 15px;
     display: flex;
     flex-direction: column;
@@ -606,14 +606,22 @@ canvas {
 }
 
 /* Editor Export Buttons */
-#editor-export {
-    position: fixed;
-    bottom: 80px;
+#editor-right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-end;
+    pointer-events: none;
+    position: absolute;
+    top: 20px;
     right: 20px;
+}
+
+#editor-export {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    z-index: 1100;
+    pointer-events: auto;
 }
 
 .export-btn {
@@ -635,9 +643,7 @@ canvas {
     transform: scale(1.05);
 }
 
-#editor-export {
-    pointer-events: all;
-}
+
 
 /* Perk Selection Overlay (Rogue Miner) */
 #perk-select-overlay {

@@ -23,6 +23,11 @@ class LevelEditor {
         // Mobile support
         this.eraseMode = false;
 
+        // Undo/Redo History
+        this.historyStack = [];
+        this.redoStack = [];
+        this.maxHistory = 50;
+
         this.levelName = "Custom Level";
         this.diamondsNeeded = 10;
         this.timeLimit = 120;
@@ -62,6 +67,9 @@ class LevelEditor {
         this.initGrid();
         this.updatePaletteUI();
         this.updateEnemyTypeUI();
+        this.historyStack = [];
+        this.redoStack = [];
+        this.updateUndoRedoUI();
     }
 
     setupInput() {
@@ -75,6 +83,12 @@ class LevelEditor {
         this.game.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
         this.game.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
         this.game.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+
+        // UI Buttons for Undo/Redo
+        document.getElementById('btn-undo-level')?.addEventListener('click', () => this.undo());
+        document.getElementById('btn-redo-level')?.addEventListener('click', () => this.redo());
+        document.getElementById('editor-btn-undo')?.addEventListener('click', () => this.undo());
+        document.getElementById('editor-btn-redo')?.addEventListener('click', () => this.redo());
     }
 
     handleTouchStart(e) {
@@ -91,6 +105,7 @@ class LevelEditor {
         this.cursorY = y;
 
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            this.saveState();
             if (this.eraseMode) {
                 this.isErasing = true;
                 this.removeTile(x, y);
@@ -183,6 +198,21 @@ class LevelEditor {
             this.selectedTile = tileMap[key];
             this.updatePaletteUI();
             return;
+        }
+
+        // Undo / Redo
+        if (e.ctrlKey || e.metaKey) {
+            if (key.toLowerCase() === 'z') {
+                if (e.shiftKey) {
+                    this.redo();
+                } else {
+                    this.undo();
+                }
+                return;
+            } else if (key.toLowerCase() === 'y') {
+                this.redo();
+                return;
+            }
         }
 
         if (key === 'e' || key === 'E') {
@@ -323,6 +353,7 @@ class LevelEditor {
         this.cursorY = y;
 
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            this.saveState();
             if (e.button === 0) {
                 this.isDrawing = true;
                 this.placeTile(x, y);
@@ -790,5 +821,78 @@ class LevelEditor {
         } catch (e) {
             console.error('Failed to load level:', e);
         }
+    }
+
+    // --- Undo / Redo Logic ---
+
+    saveState() {
+        const state = JSON.stringify({
+            grid: this.grid,
+            enemyTypes: this.enemyTypes
+        });
+
+        // Don't save if it's the same as the last state
+        if (this.historyStack.length > 0 && this.historyStack[this.historyStack.length - 1] === state) {
+            return;
+        }
+
+        this.historyStack.push(state);
+        if (this.historyStack.length > this.maxHistory) {
+            this.historyStack.shift(); // Remove oldest
+        }
+        this.redoStack = []; // Clear redo stack on new action
+        this.updateUndoRedoUI();
+    }
+
+    undo() {
+        if (this.historyStack.length === 0) return;
+
+        // Save current state to redo stack
+        const currentState = JSON.stringify({
+            grid: this.grid,
+            enemyTypes: this.enemyTypes
+        });
+        this.redoStack.push(currentState);
+
+        const previousStateJSON = this.historyStack.pop();
+        const previousState = JSON.parse(previousStateJSON);
+
+        this.grid = previousState.grid;
+        this.enemyTypes = previousState.enemyTypes;
+
+        this.updateEnemyTypeUI();
+        this.updateUndoRedoUI();
+    }
+
+    redo() {
+        if (this.redoStack.length === 0) return;
+
+        // Save current state to history stack
+        const currentState = JSON.stringify({
+            grid: this.grid,
+            enemyTypes: this.enemyTypes
+        });
+        this.historyStack.push(currentState);
+
+        const nextStateJSON = this.redoStack.pop();
+        const nextState = JSON.parse(nextStateJSON);
+
+        this.grid = nextState.grid;
+        this.enemyTypes = nextState.enemyTypes;
+
+        this.updateEnemyTypeUI();
+        this.updateUndoRedoUI();
+    }
+
+    updateUndoRedoUI() {
+        const btnUndo = document.getElementById('btn-undo-level');
+        const btnRedo = document.getElementById('btn-redo-level');
+        const mobBtnUndo = document.getElementById('editor-btn-undo');
+        const mobBtnRedo = document.getElementById('editor-btn-redo');
+
+        if (btnUndo) btnUndo.disabled = this.historyStack.length === 0;
+        if (btnRedo) btnRedo.disabled = this.redoStack.length === 0;
+        if (mobBtnUndo) mobBtnUndo.disabled = this.historyStack.length === 0;
+        if (mobBtnRedo) mobBtnRedo.disabled = this.redoStack.length === 0;
     }
 }
